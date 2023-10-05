@@ -6,7 +6,6 @@ from collections import defaultdict
 import logging
 
 from rflink.protocol import ProtocolBase, create_rflink_connection
-from serial import SerialException
 import voluptuous as vol
 
 from homeassistant.const import (
@@ -283,7 +282,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 transport, protocol = await connection
 
         except (
-            SerialException,
             OSError,
             asyncio.TimeoutError,
         ):
