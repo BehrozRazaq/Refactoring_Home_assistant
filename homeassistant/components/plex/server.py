@@ -135,81 +135,56 @@ class PlexServer:
             )
         return self._plextv_clients
 
+
+    def _connect_with_token(self):
+        servers = [
+            server for server in self.account.resources() if "server" in server.provides
+        ]
+        available_servers = [
+            (server.name, server.clientIdentifier, server.sourceTitle) for server in servers
+        ]
+
+        if not servers:
+            raise NoServersFound
+        if not self._server_id and len(servers) > 1:
+            raise ServerNotSpecified(available_servers)
+
+        self.server_choice = self._server_id or available_servers[0][1]
+        self._plex_server = next(
+            server.connect(timeout=10)
+            for server in servers
+            if server.clientIdentifier == self.server_choice
+        )
+
+
+    def _connect_with_url(self):
+        session = None
+        if self._url.startswith("https") and not self._verify_ssl:
+            session = Session()
+            session.verify = False
+        self._plex_server = plexapi.server.PlexServer(
+            self._url, self._token, session
+        )
+
+
+    def _update_plexdirect_hostname(self):
+        matching_servers = [
+            x.name
+            for x in self.account.resources()
+            if x.clientIdentifier == self._server_id
+        ]
+        if matching_servers:
+            self._plex_server = self.account.resource(matching_servers[0]).connect(
+                timeout=10
+            )
+            return True
+        _LOGGER.error("Attempt to update plex.direct hostname failed")
+        return False
+
+
     def connect(self):
         """Connect to a Plex server directly, obtaining direct URL if necessary."""
-        config_entry_update_needed = False
-
-        def _connect_with_token():
-            all_servers = [
-                x for x in self.account.resources() if "server" in x.provides
-            ]
-            available_servers = [
-                (x.name, x.clientIdentifier, x.sourceTitle) for x in all_servers
-            ]
-
-            if not all_servers:
-                raise NoServersFound
-            if not self._server_id and len(all_servers) > 1:
-                raise ServerNotSpecified(available_servers)
-
-            self.server_choice = self._server_id or available_servers[0][1]
-            self._plex_server = next(
-                x.connect(timeout=10)
-                for x in all_servers
-                if x.clientIdentifier == self.server_choice
-            )
-
-        def _connect_with_url():
-            session = None
-            if self._url.startswith("https") and not self._verify_ssl:
-                session = Session()
-                session.verify = False
-            self._plex_server = plexapi.server.PlexServer(
-                self._url, self._token, session
-            )
-
-        def _update_plexdirect_hostname():
-            matching_servers = [
-                x.name
-                for x in self.account.resources()
-                if x.clientIdentifier == self._server_id
-            ]
-            if matching_servers:
-                self._plex_server = self.account.resource(matching_servers[0]).connect(
-                    timeout=10
-                )
-                return True
-            _LOGGER.error("Attempt to update plex.direct hostname failed")
-            return False
-
-        if self._url:
-            try:
-                _connect_with_url()
-            except requests.exceptions.SSLError as error:
-                while error and not isinstance(error, ssl.SSLCertVerificationError):
-                    error = error.__context__
-                if isinstance(error, ssl.SSLCertVerificationError):
-                    domain = urlparse(self._url).netloc.split(":")[0]
-                    if domain.endswith("plex.direct") and error.args[0].startswith(
-                        f"hostname '{domain}' doesn't match"
-                    ):
-                        _LOGGER.warning(
-                            "Plex SSL certificate's hostname changed, updating"
-                        )
-                        if _update_plexdirect_hostname():
-                            config_entry_update_needed = True
-                        else:
-                            # pylint: disable-next=raise-missing-from
-                            raise Unauthorized(  # noqa: TRY200
-                                "New certificate cannot be validated"
-                                " with provided token"
-                            )
-                    else:
-                        raise
-                else:
-                    raise
-        else:
-            _connect_with_token()
+        config_entry_update_needed = self._try_connect()
 
         try:
             system_accounts = self._plex_server.systemAccounts()
@@ -241,6 +216,43 @@ class PlexServer:
 
         if config_entry_update_needed:
             raise ShouldUpdateConfigEntry
+
+    def _try_connect(self) -> bool:
+        """
+        Tries to connect with url (if available) or token.
+        Returns if config entry update is needed.
+        """
+        if not self._url:
+            self._connect_with_token()
+            return False
+
+        try:
+            self._connect_with_url()
+        except requests.exceptions.SSLError as error:
+            while error and not isinstance(error, ssl.SSLCertVerificationError):
+                error = error.__context__
+            if not isinstance(error, ssl.SSLCertVerificationError):
+                raise
+
+            domain = urlparse(self._url).netloc.split(":")[0]
+            if not (domain.endswith("plex.direct") and error.args[0].startswith(
+                    f"hostname '{domain}' doesn't match"
+            )):
+                raise
+
+            _LOGGER.warning(
+                "Plex SSL certificate's hostname changed, updating"
+            )
+            if self._update_plexdirect_hostname():
+                return True
+
+            # pylint: disable-next=raise-missing-from
+            raise Unauthorized(  # noqa: TRY200
+                "New certificate cannot be validated"
+                " with provided token"
+            )
+        return False
+
 
     @callback
     def async_refresh_entity(self, machine_identifier, device, session, source):
