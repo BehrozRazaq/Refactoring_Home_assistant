@@ -16,7 +16,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import HomeAssistantTuyaData
 from .base import IntegerTypeData, TuyaEntity
-from .const import DEVICE_CLASS_UNITS, DOMAIN, TUYA_DISCOVERY_NEW, DPCode, DPType
+from .const import DEVICE_CLASS_UNITS, DOMAIN, TUYA_DISCOVERY_NEW, DPCode, DPType, Icon
 
 # All descriptions can be found here. Mostly the Integer data types in the
 # default instructions set of each category end up being a number.
@@ -38,34 +38,34 @@ NUMBERS: dict[str, tuple[NumberEntityDescription, ...]] = {
             key=DPCode.TEMP_SET,
             translation_key="temperature",
             device_class=NumberDeviceClass.TEMPERATURE,
-            icon="mdi:thermometer",
+            icon=Icon.THERMOMETER,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.TEMP_SET_F,
             translation_key="temperature",
             device_class=NumberDeviceClass.TEMPERATURE,
-            icon="mdi:thermometer",
+            icon=Icon.THERMOMETER,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.TEMP_BOILING_C,
             translation_key="temperature_after_boiling",
             device_class=NumberDeviceClass.TEMPERATURE,
-            icon="mdi:thermometer",
+            icon=Icon.THERMOMETER,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.TEMP_BOILING_F,
             translation_key="temperature_after_boiling",
             device_class=NumberDeviceClass.TEMPERATURE,
-            icon="mdi:thermometer",
+            icon=Icon.THERMOMETER,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.WARM_TIME,
             translation_key="heat_preservation_time",
-            icon="mdi:timer",
+            icon=Icon.TIMER,
             entity_category=EntityCategory.CONFIG,
         ),
     ),
@@ -75,12 +75,12 @@ NUMBERS: dict[str, tuple[NumberEntityDescription, ...]] = {
         NumberEntityDescription(
             key=DPCode.MANUAL_FEED,
             translation_key="feed",
-            icon="mdi:bowl",
+            icon=Icon.BOWL,
         ),
         NumberEntityDescription(
             key=DPCode.VOICE_TIMES,
             translation_key="voice_times",
-            icon="mdi:microphone",
+            icon=Icon.MICROPHONE,
         ),
     ),
     # Human Presence Sensor
@@ -94,13 +94,13 @@ NUMBERS: dict[str, tuple[NumberEntityDescription, ...]] = {
         NumberEntityDescription(
             key=DPCode.NEAR_DETECTION,
             translation_key="near_detection",
-            icon="mdi:signal-distance-variant",
+            icon=Icon.SIGNAL_DISTANCE_VARIANT,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.FAR_DETECTION,
             translation_key="far_detection",
-            icon="mdi:signal-distance-variant",
+            icon=Icon.SIGNAL_DISTANCE_VARIANT,
             entity_category=EntityCategory.CONFIG,
         ),
     ),
@@ -110,20 +110,20 @@ NUMBERS: dict[str, tuple[NumberEntityDescription, ...]] = {
         NumberEntityDescription(
             key=DPCode.WATER_SET,
             translation_key="water_level",
-            icon="mdi:cup-water",
+            icon=Icon.CUP_WATER,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.TEMP_SET,
             translation_key="temperature",
             device_class=NumberDeviceClass.TEMPERATURE,
-            icon="mdi:thermometer",
+            icon=Icon.THERMOMETER,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.WARM_TIME,
             translation_key="heat_preservation_time",
-            icon="mdi:timer",
+            icon=Icon.TIMER,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
@@ -138,13 +138,13 @@ NUMBERS: dict[str, tuple[NumberEntityDescription, ...]] = {
         NumberEntityDescription(
             key=DPCode.COOK_TEMPERATURE,
             translation_key="cook_temperature",
-            icon="mdi:thermometer",
+            icon=Icon.THERMOMETER,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.COOK_TIME,
             translation_key="cook_time",
-            icon="mdi:timer",
+            icon=Icon.TIMER,
             native_unit_of_measurement=UnitOfTime.MINUTES,
             entity_category=EntityCategory.CONFIG,
         ),
@@ -160,7 +160,7 @@ NUMBERS: dict[str, tuple[NumberEntityDescription, ...]] = {
         NumberEntityDescription(
             key=DPCode.VOLUME_SET,
             translation_key="volume",
-            icon="mdi:volume-high",
+            icon=Icon.VOLUME_HIGH,
             entity_category=EntityCategory.CONFIG,
         ),
     ),
@@ -179,7 +179,7 @@ NUMBERS: dict[str, tuple[NumberEntityDescription, ...]] = {
         NumberEntityDescription(
             key=DPCode.BASIC_DEVICE_VOLUME,
             translation_key="volume",
-            icon="mdi:volume-high",
+            icon=Icon.VOLUME_HIGH,
             entity_category=EntityCategory.CONFIG,
         ),
     ),
@@ -189,37 +189,37 @@ NUMBERS: dict[str, tuple[NumberEntityDescription, ...]] = {
         NumberEntityDescription(
             key=DPCode.BRIGHTNESS_MIN_1,
             translation_key="minimum_brightness",
-            icon="mdi:lightbulb-outline",
+            icon=Icon.LIGHTBULB_OUTLINE,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.BRIGHTNESS_MAX_1,
             translation_key="maximum_brightness",
-            icon="mdi:lightbulb-on-outline",
+            icon=Icon.LIGHTBULB_ON_OUTLINE,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.BRIGHTNESS_MIN_2,
             translation_key="minimum_brightness_2",
-            icon="mdi:lightbulb-outline",
+            icon=Icon.LIGHTBULB_OUTLINE,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.BRIGHTNESS_MAX_2,
             translation_key="maximum_brightness_2",
-            icon="mdi:lightbulb-on-outline",
+            icon=Icon.LIGHTBULB_ON_OUTLINE,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.BRIGHTNESS_MIN_3,
             translation_key="minimum_brightness_3",
-            icon="mdi:lightbulb-outline",
+            icon=Icon.LIGHTBULB_OUTLINE,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.BRIGHTNESS_MAX_3,
             translation_key="maximum_brightness_3",
-            icon="mdi:lightbulb-on-outline",
+            icon=Icon.LIGHTBULB_ON_OUTLINE,
             entity_category=EntityCategory.CONFIG,
         ),
     ),
@@ -229,25 +229,25 @@ NUMBERS: dict[str, tuple[NumberEntityDescription, ...]] = {
         NumberEntityDescription(
             key=DPCode.BRIGHTNESS_MIN_1,
             translation_key="minimum_brightness",
-            icon="mdi:lightbulb-outline",
+            icon=Icon.LIGHTBULB_OUTLINE,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.BRIGHTNESS_MAX_1,
             translation_key="maximum_brightness",
-            icon="mdi:lightbulb-on-outline",
+            icon=Icon.LIGHTBULB_ON_OUTLINE,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.BRIGHTNESS_MIN_2,
             translation_key="minimum_brightness_2",
-            icon="mdi:lightbulb-outline",
+            icon=Icon.LIGHTBULB_OUTLINE,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.BRIGHTNESS_MAX_2,
             translation_key="maximum_brightness_2",
-            icon="mdi:lightbulb-on-outline",
+            icon=Icon.LIGHTBULB_ON_OUTLINE,
             entity_category=EntityCategory.CONFIG,
         ),
     ),
@@ -265,21 +265,21 @@ NUMBERS: dict[str, tuple[NumberEntityDescription, ...]] = {
         NumberEntityDescription(
             key=DPCode.ARM_DOWN_PERCENT,
             translation_key="move_down",
-            icon="mdi:arrow-down-bold",
+            icon=Icon.ARROW_DOWN_BOLD,
             native_unit_of_measurement=PERCENTAGE,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.ARM_UP_PERCENT,
             translation_key="move_up",
-            icon="mdi:arrow-up-bold",
+            icon=Icon.ARROW_UP_BOLD,
             native_unit_of_measurement=PERCENTAGE,
             entity_category=EntityCategory.CONFIG,
         ),
         NumberEntityDescription(
             key=DPCode.CLICK_SUSTAIN_TIME,
             translation_key="down_delay",
-            icon="mdi:timer",
+            icon=Icon.TIMER,
             entity_category=EntityCategory.CONFIG,
         ),
     ),
@@ -290,7 +290,7 @@ NUMBERS: dict[str, tuple[NumberEntityDescription, ...]] = {
             key=DPCode.TEMP,
             translation_key="temperature",
             device_class=NumberDeviceClass.TEMPERATURE,
-            icon="mdi:thermometer-lines",
+            icon=Icon.THERMOMETER_LINES,
         ),
     ),
     # Humidifier
@@ -300,13 +300,13 @@ NUMBERS: dict[str, tuple[NumberEntityDescription, ...]] = {
             key=DPCode.TEMP_SET,
             translation_key="temperature",
             device_class=NumberDeviceClass.TEMPERATURE,
-            icon="mdi:thermometer-lines",
+            icon=Icon.THERMOMETER_LINES,
         ),
         NumberEntityDescription(
             key=DPCode.TEMP_SET_F,
             translation_key="temperature",
             device_class=NumberDeviceClass.TEMPERATURE,
-            icon="mdi:thermometer-lines",
+            icon=Icon.THERMOMETER_LINES,
         ),
     ),
 }
