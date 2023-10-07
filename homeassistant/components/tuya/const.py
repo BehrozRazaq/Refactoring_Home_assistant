@@ -105,10 +105,12 @@ class Icons(StrEnum):
     TEXTURE_BOX = "mdi:texture-box" #3x
     PROGRESS_CLOCK = "mdi:progress-clock" #2x
     HISTORY = "mdi:history" #2x
-    TICKER_PERCENT_OUTLINE= "mdi:ticket-percent-outline" #5x
+    TICKET_PERCENT_OUTLINE= "mdi:ticket-percent-outline" #5x
     WAVES_ARROW_UP = "mdi:waves-arrow-up"
     MOLECULE = "mdi:molecule"
     AIR_FILTER = "mdi:air-filter"
+    #number.py constants
+    
     
     ##TODO
     # Other icon definitions..
