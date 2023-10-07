@@ -92,6 +92,27 @@ class DPType(StrEnum):
     RAW = "Raw"
     STRING = "String"
 
+class Icons(StrEnum):
+    #sensor.py constants
+    BATTERY = "mdi:battery"
+    GAS_CYLINDER = "mdi:gas-cylinder" #2x
+    MOLECULE_CO = "mdi:molecule-co"
+    MOLECULE_CO2= "mdi:molecule-co2"
+    BRIGHTNESS_6= "mdi:brightness-6" #3x
+    SMOKE_DETECTOR= "mdi:smoke-detector" #2x
+    COUNTER= "mdi:counter" #2x
+    TIMER= "mdi:timer"
+    TEXTURE_BOX = "mdi:texture-box" #3x
+    PROGRESS_CLOCK = "mdi:progress-clock" #2x
+    HISTORY = "mdi:history" #2x
+    TICKER_PERCENT_OUTLINE= "mdi:ticket-percent-outline" #5x
+    WAVES_ARROW_UP = "mdi:waves-arrow-up"
+    MOLECULE = "mdi:molecule"
+    AIR_FILTER = "mdi:air-filter"
+    
+    ##TODO
+    # Other icon definitions..
+
 
 class DPCode(StrEnum):
     """Data Point Codes used by Tuya.
