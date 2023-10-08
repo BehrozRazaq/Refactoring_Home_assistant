@@ -117,6 +117,55 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
+def _get_plex_account(plex_server):
+    try:
+        return plex_server.account
+    except (plexapi.exceptions.BadRequest, plexapi.exceptions.Unauthorized):
+        return None
+
+def setup_websocket(hass, entry, plex_server, server_config, server_id):
+    @callback
+    def plex_websocket_callback(msgtype, data, error):
+        """Handle callbacks from plexwebsocket library."""
+        if msgtype == SIGNAL_CONNECTION_STATE:
+            if data == STATE_CONNECTED:
+                _LOGGER.debug("Websocket to %s successful", entry.data[CONF_SERVER])
+                hass.async_create_task(plex_server.async_update_platforms())
+            elif data == STATE_DISCONNECTED:
+                _LOGGER.debug(
+                    "Websocket to %s disconnected, retrying", entry.data[CONF_SERVER]
+                )
+            # Stopped websockets without errors are expected during shutdown and ignored
+            elif data == STATE_STOPPED and error:
+                _LOGGER.error(
+                    "Websocket to %s failed, aborting [Error: %s]",
+                    entry.data[CONF_SERVER],
+                    error,
+                )
+                hass.async_create_task(hass.config_entries.async_reload(entry.entry_id))
+
+        elif msgtype == "playing":
+            hass.async_create_task(plex_server.async_update_session(data))
+        elif msgtype == "status":
+            if data["StatusNotification"][0]["title"] == "Library scan complete":
+                async_dispatcher_send(
+                    hass,
+                    PLEX_UPDATE_LIBRARY_SIGNAL.format(server_id),
+                )
+
+    session = async_get_clientsession(hass)
+    subscriptions = ["playing", "status"]
+    verify_ssl = server_config.get(CONF_VERIFY_SSL)
+    websocket = PlexWebsocket(
+        plex_server.plex_server,
+        plex_websocket_callback,
+        subscriptions=subscriptions,
+        session=session,
+        verify_ssl=verify_ssl,
+    )
+    return websocket
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Plex from a config entry."""
     server_config = entry.data[PLEX_SERVER_CONFIG]
@@ -191,45 +240,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass_data[DISPATCHERS].setdefault(server_id, [])
     hass_data[DISPATCHERS][server_id].append(unsub)
 
-    @callback
-    def plex_websocket_callback(msgtype, data, error):
-        """Handle callbacks from plexwebsocket library."""
-        if msgtype == SIGNAL_CONNECTION_STATE:
-            if data == STATE_CONNECTED:
-                _LOGGER.debug("Websocket to %s successful", entry.data[CONF_SERVER])
-                hass.async_create_task(plex_server.async_update_platforms())
-            elif data == STATE_DISCONNECTED:
-                _LOGGER.debug(
-                    "Websocket to %s disconnected, retrying", entry.data[CONF_SERVER]
-                )
-            # Stopped websockets without errors are expected during shutdown and ignored
-            elif data == STATE_STOPPED and error:
-                _LOGGER.error(
-                    "Websocket to %s failed, aborting [Error: %s]",
-                    entry.data[CONF_SERVER],
-                    error,
-                )
-                hass.async_create_task(hass.config_entries.async_reload(entry.entry_id))
-
-        elif msgtype == "playing":
-            hass.async_create_task(plex_server.async_update_session(data))
-        elif msgtype == "status":
-            if data["StatusNotification"][0]["title"] == "Library scan complete":
-                async_dispatcher_send(
-                    hass,
-                    PLEX_UPDATE_LIBRARY_SIGNAL.format(server_id),
-                )
-
-    session = async_get_clientsession(hass)
-    subscriptions = ["playing", "status"]
-    verify_ssl = server_config.get(CONF_VERIFY_SSL)
-    websocket = PlexWebsocket(
-        plex_server.plex_server,
-        plex_websocket_callback,
-        subscriptions=subscriptions,
-        session=session,
-        verify_ssl=verify_ssl,
-    )
+    websocket = setup_websocket(hass, entry, plex_server, server_config, server_id)
     hass_data[WEBSOCKETS][server_id] = websocket
 
     def start_websocket_session(platform):
@@ -237,11 +248,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if hass_data[PLATFORMS_COMPLETED][server_id] == PLATFORMS:
             hass.loop.create_task(websocket.listen())
 
-    def close_websocket_session(_):
-        websocket.close()
-
     unsub = hass.bus.async_listen_once(
-        EVENT_HOMEASSISTANT_STOP, close_websocket_session
+        EVENT_HOMEASSISTANT_STOP, lambda _ : websocket.close()
     )
     hass_data[DISPATCHERS][server_id].append(unsub)
 
@@ -252,13 +260,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async_cleanup_plex_devices(hass, entry)
 
-    def get_plex_account(plex_server):
-        try:
-            return plex_server.account
-        except (plexapi.exceptions.BadRequest, plexapi.exceptions.Unauthorized):
-            return None
-
-    await hass.async_add_executor_job(get_plex_account, plex_server)
+    await hass.async_add_executor_job(_get_plex_account, plex_server)
 
     @callback
     def scheduled_client_scan(_):
