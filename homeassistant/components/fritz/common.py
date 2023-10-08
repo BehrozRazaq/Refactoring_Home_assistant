@@ -413,6 +413,54 @@ class FritzBoxTools(
             )
             return None
 
+    def _extract_devices_from_attributes(
+        self, host_attributes: list[HostAttributes]
+    ) -> dict[str, Device]:
+        hosts = {}
+        for attributes in host_attributes:
+            if not attributes.get("MACAddress"):
+                continue
+
+            if (wan_access := attributes.get("X_AVM-DE_WANAccess")) is not None:
+                wan_access_result = "granted" in wan_access
+            else:
+                wan_access_result = None
+
+            hosts[attributes["MACAddress"]] = Device(
+                name=attributes["HostName"],
+                connected=attributes["Active"],
+                connected_to="",
+                connection_type="",
+                ip_address=attributes["IPAddress"],
+                ssid=None,
+                wan_access=wan_access_result,
+            )
+        return hosts
+
+    async def _extract_devices_from_info(
+        self, hosts_info: list[HostInfo]
+    ) -> dict[str, Device]:
+        hosts = {}
+        for info in hosts_info:
+            if not info.get("mac"):
+                continue
+
+            if info["ip"]:
+                wan_access_result = await self._async_get_wan_access(info["ip"])
+            else:
+                wan_access_result = None
+
+            hosts[info["mac"]] = Device(
+                name=info["name"],
+                connected=info["status"],
+                connected_to="",
+                connection_type="",
+                ip_address=info["ip"],
+                ssid=None,
+                wan_access=wan_access_result,
+            )
+        return hosts
+
     async def _async_update_hosts_info(self) -> dict[str, Device]:
         """Retrieve latest hosts information from the FRITZ!Box."""
         hosts_attributes: list[HostAttributes] = []
@@ -422,54 +470,15 @@ class FritzBoxTools(
                 hosts_attributes = await self.hass.async_add_executor_job(
                     self.fritz_hosts.get_hosts_attributes
                 )
+                return self._extract_devices_from_attributes(hosts_attributes)
             except FritzActionError:
                 hosts_info = await self.hass.async_add_executor_job(
                     self.fritz_hosts.get_hosts_info
                 )
+                return self._extract_devices_from_info(hosts_info)
         except Exception as ex:  # pylint: disable=[broad-except]
             if not self.hass.is_stopping:
                 raise HomeAssistantError("Error refreshing hosts info") from ex
-
-        hosts: dict[str, Device] = {}
-        if hosts_attributes:
-            for attributes in hosts_attributes:
-                if not attributes.get("MACAddress"):
-                    continue
-
-                if (wan_access := attributes.get("X_AVM-DE_WANAccess")) is not None:
-                    wan_access_result = "granted" in wan_access
-                else:
-                    wan_access_result = None
-
-                hosts[attributes["MACAddress"]] = Device(
-                    name=attributes["HostName"],
-                    connected=attributes["Active"],
-                    connected_to="",
-                    connection_type="",
-                    ip_address=attributes["IPAddress"],
-                    ssid=None,
-                    wan_access=wan_access_result,
-                )
-        else:
-            for info in hosts_info:
-                if not info.get("mac"):
-                    continue
-
-                if info["ip"]:
-                    wan_access_result = await self._async_get_wan_access(info["ip"])
-                else:
-                    wan_access_result = None
-
-                hosts[info["mac"]] = Device(
-                    name=info["name"],
-                    connected=info["status"],
-                    connected_to="",
-                    connection_type="",
-                    ip_address=info["ip"],
-                    ssid=None,
-                    wan_access=wan_access_result,
-                )
-        return hosts
 
     def _update_device_info(self) -> tuple[bool, str | None, str | None]:
         """Retrieve latest device information from the FRITZ!Box."""
