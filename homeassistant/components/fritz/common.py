@@ -529,6 +529,80 @@ class FritzBoxTools(
         if new_device:
             async_dispatcher_send(self.hass, self.signal_device_new)
 
+    def _get_meshed_interfaces(self, topology: dict) -> dict[str, Interface]:
+        """Gets all meshed devices"""
+        meshed_devices = {}
+        for node in topology.get("nodes", []):
+            if not node["is_meshed"]:
+                continue
+
+            for interf in node["node_interfaces"]:
+                int_mac = interf["mac_address"]
+                meshed_devices[interf["uid"]] = Interface(
+                    device=node["device_name"],
+                    mac=int_mac,
+                    op_mode=interf.get("op_mode", ""),
+                    ssid=interf.get("ssid", ""),
+                    type=interf["type"],
+                )
+                if dr.format_mac(int_mac) == self.mac:
+                    self.mesh_role = MeshRoles(node["mesh_role"])
+        return meshed_devices
+
+    def _inject_info_to_device(self, device: Device, node_interfaces: dict, meshed_interfaces: dict[str, Interface]):
+        for link in node_interfaces["node_links"]:
+            intf = meshed_interfaces.get(link["node_interface_1_uid"])
+            if intf is not None:
+                if intf["op_mode"] == "AP_GUEST":
+                    device.wan_access = None
+
+                device.connected_to = intf["device"]
+                device.connection_type = intf["type"]
+                device.ssid = intf.get("ssid")
+    
+    def _update_device_list_old(self, hosts: dict[str, Device], consider_home: float) -> bool:
+        new_device = False
+        _LOGGER.debug(
+            "Using old hosts discovery method. (Mesh not supported or user option)"
+        )
+        self.mesh_role = MeshRoles.NONE
+        for mac, info in hosts.items():
+            if self.manage_device_info(info, mac, consider_home):
+                new_device = True
+        return new_device
+
+    async def _update_device_list(self, hosts: dict[str, Device], consider_home: float) -> bool:
+        try:
+            if not (
+                topology := await self.hass.async_add_executor_job(
+                    self.fritz_hosts.get_mesh_topology
+                )
+            ):
+                # pylint: disable-next=broad-exception-raised
+                raise Exception("Mesh supported but empty topology reported")
+        except FritzActionError:
+            self.mesh_role = MeshRoles.SLAVE
+            # Avoid duplicating device trackers
+            return
+        mesh_intf = self._get_meshed_interfaces(topology)
+        new_device = False
+        for node in topology.get("nodes", []):
+            if node["is_meshed"]:
+                continue
+
+            for interf in node["node_interfaces"]:
+                dev_mac = interf["mac_address"]
+
+                if dev_mac not in hosts:
+                    continue
+
+                dev_info: Device = hosts[dev_mac]
+                self._inject_info_to_device(dev_info, interf, mesh_intf)
+
+                if self.manage_device_info(dev_info, dev_mac, consider_home):
+                    new_device = True
+        return new_device
+
     async def async_scan_devices(self, now: datetime | None = None) -> None:
         """Scan for new devices and return a list of found device ids."""
 
@@ -552,80 +626,15 @@ class FritzBoxTools(
         else:
             consider_home = _default_consider_home
 
-        new_device = False
         hosts = await self._async_update_hosts_info()
 
         if not self.fritz_status.device_has_mesh_support or (
             self._options
             and self._options.get(CONF_OLD_DISCOVERY, DEFAULT_CONF_OLD_DISCOVERY)
         ):
-            _LOGGER.debug(
-                "Using old hosts discovery method. (Mesh not supported or user option)"
-            )
-            self.mesh_role = MeshRoles.NONE
-            for mac, info in hosts.items():
-                if self.manage_device_info(info, mac, consider_home):
-                    new_device = True
-            await self.async_send_signal_device_update(new_device)
-            return
-
-        try:
-            if not (
-                topology := await self.hass.async_add_executor_job(
-                    self.fritz_hosts.get_mesh_topology
-                )
-            ):
-                # pylint: disable-next=broad-exception-raised
-                raise Exception("Mesh supported but empty topology reported")
-        except FritzActionError:
-            self.mesh_role = MeshRoles.SLAVE
-            # Avoid duplicating device trackers
-            return
-
-        mesh_intf = {}
-        # first get all meshed devices
-        for node in topology.get("nodes", []):
-            if not node["is_meshed"]:
-                continue
-
-            for interf in node["node_interfaces"]:
-                int_mac = interf["mac_address"]
-                mesh_intf[interf["uid"]] = Interface(
-                    device=node["device_name"],
-                    mac=int_mac,
-                    op_mode=interf.get("op_mode", ""),
-                    ssid=interf.get("ssid", ""),
-                    type=interf["type"],
-                )
-                if dr.format_mac(int_mac) == self.mac:
-                    self.mesh_role = MeshRoles(node["mesh_role"])
-
-        # second get all client devices
-        for node in topology.get("nodes", []):
-            if node["is_meshed"]:
-                continue
-
-            for interf in node["node_interfaces"]:
-                dev_mac = interf["mac_address"]
-
-                if dev_mac not in hosts:
-                    continue
-
-                dev_info: Device = hosts[dev_mac]
-
-                for link in interf["node_links"]:
-                    intf = mesh_intf.get(link["node_interface_1_uid"])
-                    if intf is not None:
-                        if intf["op_mode"] == "AP_GUEST":
-                            dev_info.wan_access = None
-
-                        dev_info.connected_to = intf["device"]
-                        dev_info.connection_type = intf["type"]
-                        dev_info.ssid = intf.get("ssid")
-
-                if self.manage_device_info(dev_info, dev_mac, consider_home):
-                    new_device = True
-
+            new_device = self._update_device_list_old(hosts, consider_home)
+        else:
+            new_device = await self._update_device_list(hosts, consider_home)
         await self.async_send_signal_device_update(new_device)
 
     async def async_trigger_firmware_update(self) -> bool:
