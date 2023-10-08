@@ -79,3 +79,7 @@ FRITZ_EXCEPTIONS = (
 FRITZ_AUTH_EXCEPTIONS = (FritzAuthorizationError, FritzSecurityError)
 
 WIFI_STANDARD = {1: "2.4Ghz", 2: "5Ghz", 3: "5Ghz", 4: "Guest"}
+
+ICON_UPLOAD = "mdi:upload"
+ICON_DOWNLOAD = "mdi:download"
+ICON_EARTH = "mdi:earth"

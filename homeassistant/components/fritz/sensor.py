@@ -32,7 +32,7 @@ from .common import (
     FritzBoxBaseCoordinatorEntity,
     FritzEntityDescription,
 )
-from .const import DOMAIN, DSL_CONNECTION, UPTIME_DEVIATION
+from .const import DOMAIN, DSL_CONNECTION, ICON_DOWNLOAD, ICON_EARTH, ICON_UPLOAD, UPTIME_DEVIATION
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -153,13 +153,13 @@ SENSOR_TYPES: tuple[FritzSensorEntityDescription, ...] = (
     FritzSensorEntityDescription(
         key="external_ip",
         translation_key="external_ip",
-        icon="mdi:earth",
+        icon=ICON_EARTH,
         value_fn=_retrieve_external_ip_state,
     ),
     FritzSensorEntityDescription(
         key="external_ipv6",
         translation_key="external_ipv6",
-        icon="mdi:earth",
+        icon=ICON_EARTH,
         value_fn=_retrieve_external_ipv6_state,
         is_suitable=lambda info: info.ipv6_active,
     ),
@@ -184,7 +184,7 @@ SENSOR_TYPES: tuple[FritzSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfDataRate.KILOBYTES_PER_SECOND,
         device_class=SensorDeviceClass.DATA_RATE,
-        icon="mdi:upload",
+        icon=ICON_UPLOAD,
         value_fn=_retrieve_kb_s_sent_state,
     ),
     FritzSensorEntityDescription(
@@ -193,7 +193,7 @@ SENSOR_TYPES: tuple[FritzSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement=UnitOfDataRate.KILOBYTES_PER_SECOND,
         device_class=SensorDeviceClass.DATA_RATE,
-        icon="mdi:download",
+        icon=ICON_DOWNLOAD,
         value_fn=_retrieve_kb_s_received_state,
     ),
     FritzSensorEntityDescription(
@@ -201,7 +201,7 @@ SENSOR_TYPES: tuple[FritzSensorEntityDescription, ...] = (
         translation_key="max_kb_s_sent",
         native_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
         device_class=SensorDeviceClass.DATA_RATE,
-        icon="mdi:upload",
+        icon=ICON_UPLOAD,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=_retrieve_max_kb_s_sent_state,
     ),
@@ -210,7 +210,7 @@ SENSOR_TYPES: tuple[FritzSensorEntityDescription, ...] = (
         translation_key="max_kb_s_received",
         native_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
         device_class=SensorDeviceClass.DATA_RATE,
-        icon="mdi:download",
+        icon=ICON_DOWNLOAD,
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=_retrieve_max_kb_s_received_state,
     ),
@@ -220,7 +220,7 @@ SENSOR_TYPES: tuple[FritzSensorEntityDescription, ...] = (
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         device_class=SensorDeviceClass.DATA_SIZE,
-        icon="mdi:upload",
+        icon=ICON_UPLOAD,
         value_fn=_retrieve_gb_sent_state,
     ),
     FritzSensorEntityDescription(
@@ -229,7 +229,7 @@ SENSOR_TYPES: tuple[FritzSensorEntityDescription, ...] = (
         state_class=SensorStateClass.TOTAL_INCREASING,
         native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         device_class=SensorDeviceClass.DATA_SIZE,
-        icon="mdi:download",
+        icon=ICON_DOWNLOAD,
         value_fn=_retrieve_gb_received_state,
     ),
     FritzSensorEntityDescription(
@@ -237,7 +237,7 @@ SENSOR_TYPES: tuple[FritzSensorEntityDescription, ...] = (
         translation_key="link_kb_s_sent",
         native_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
         device_class=SensorDeviceClass.DATA_RATE,
-        icon="mdi:upload",
+        icon=ICON_UPLOAD,
         value_fn=_retrieve_link_kb_s_sent_state,
     ),
     FritzSensorEntityDescription(
@@ -245,14 +245,14 @@ SENSOR_TYPES: tuple[FritzSensorEntityDescription, ...] = (
         translation_key="link_kb_s_received",
         native_unit_of_measurement=UnitOfDataRate.KILOBITS_PER_SECOND,
         device_class=SensorDeviceClass.DATA_RATE,
-        icon="mdi:download",
+        icon=ICON_DOWNLOAD,
         value_fn=_retrieve_link_kb_s_received_state,
     ),
     FritzSensorEntityDescription(
         key="link_noise_margin_sent",
         translation_key="link_noise_margin_sent",
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
-        icon="mdi:upload",
+        icon=ICON_UPLOAD,
         value_fn=_retrieve_link_noise_margin_sent_state,
         is_suitable=lambda info: info.wan_enabled and info.connection == DSL_CONNECTION,
     ),
@@ -260,7 +260,7 @@ SENSOR_TYPES: tuple[FritzSensorEntityDescription, ...] = (
         key="link_noise_margin_received",
         translation_key="link_noise_margin_received",
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
-        icon="mdi:download",
+        icon=ICON_DOWNLOAD,
         value_fn=_retrieve_link_noise_margin_received_state,
         is_suitable=lambda info: info.wan_enabled and info.connection == DSL_CONNECTION,
     ),
@@ -268,7 +268,7 @@ SENSOR_TYPES: tuple[FritzSensorEntityDescription, ...] = (
         key="link_attenuation_sent",
         translation_key="link_attenuation_sent",
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
-        icon="mdi:upload",
+        icon=ICON_UPLOAD,
         value_fn=_retrieve_link_attenuation_sent_state,
         is_suitable=lambda info: info.wan_enabled and info.connection == DSL_CONNECTION,
     ),
@@ -276,7 +276,7 @@ SENSOR_TYPES: tuple[FritzSensorEntityDescription, ...] = (
         key="link_attenuation_received",
         translation_key="link_attenuation_received",
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS,
-        icon="mdi:download",
+        icon=ICON_DOWNLOAD,
         value_fn=_retrieve_link_attenuation_received_state,
         is_suitable=lambda info: info.wan_enabled and info.connection == DSL_CONNECTION,
     ),
