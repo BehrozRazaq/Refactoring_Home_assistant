@@ -99,6 +99,110 @@ def _ha_is_stopping(activity: str) -> None:
     """Inform that HA is stopping."""
     _LOGGER.info("Cannot execute %s: HomeAssistant is shutting down", activity)
 
+def _extract_devices_from_attributes(host_attributes: list[HostAttributes]) -> dict[str, Device]:
+    hosts = {}
+    for attributes in host_attributes:
+        if not attributes.get("MACAddress"):
+            continue
+
+        if (wan_access := attributes.get("X_AVM-DE_WANAccess")) is not None:
+            wan_access_result = "granted" in wan_access
+        else:
+            wan_access_result = None
+
+        hosts[attributes["MACAddress"]] = Device(
+            name=attributes["HostName"],
+            connected=attributes["Active"],
+            connected_to="",
+            connection_type="",
+            ip_address=attributes["IPAddress"],
+            ssid=None,
+            wan_access=wan_access_result,
+        )
+    return hosts
+
+async def _async_get_wan_access(hass: HomeAssistant, connection: FritzConnection, ip_address: str) -> bool | None:
+    """Get WAN access rule for given IP address."""
+    try:
+        wan_access = await hass.async_add_executor_job(
+            partial(
+                connection.call_action,
+                "X_AVM-DE_HostFilter:1",
+                "GetWANAccessByIP",
+                NewIPv4Address=ip_address,
+            )
+        )
+        return not wan_access.get("NewDisallow")
+    except FRITZ_EXCEPTIONS as ex:
+        _LOGGER.debug(
+            (
+                "could not get WAN access rule for client device with IP '%s',"
+                " error: %s"
+            ),
+            ip_address,
+            ex,
+        )
+        return None
+
+async def _extract_devices_from_info(hass: HomeAssistant, connection: FritzConnection, hosts_info: list[HostInfo]) -> dict[str, Device]:
+    hosts = {}
+    for info in hosts_info:
+        if not info.get("mac"):
+            continue
+
+        if info["ip"]:
+            wan_access_result = await _async_get_wan_access(hass, connection, info["ip"])
+        else:
+            wan_access_result = None
+
+        hosts[info["mac"]] = Device(
+            name=info["name"],
+            connected=info["status"],
+            connected_to="",
+            connection_type="",
+            ip_address=info["ip"],
+            ssid=None,
+            wan_access=wan_access_result,
+        )
+    return hosts
+
+async def _async_update_hosts_info(hass: HomeAssistant, fritz_hosts: FritzHosts, connection: FritzConnection) -> dict[str, Device]:
+    """Retrieve latest hosts information from the FRITZ!Box."""
+    hosts_attributes: list[HostAttributes] = []
+    hosts_info: list[HostInfo] = []
+    try:
+        try:
+            hosts_attributes = await hass.async_add_executor_job(
+                fritz_hosts.get_hosts_attributes
+            )
+            return _extract_devices_from_attributes(hosts_attributes)
+        except FritzActionError:
+            hosts_info = await hass.async_add_executor_job(
+                fritz_hosts.get_hosts_info
+            )
+            return _extract_devices_from_info(hass, connection, hosts_info)
+    except Exception as ex:  # pylint: disable=[broad-except]
+        if not hass.is_stopping:
+            raise HomeAssistantError("Error refreshing hosts info") from ex
+
+@callback
+def _async_remove_empty_devices(
+    hass: HomeAssistant, entity_reg: er.EntityRegistry, config_entry: ConfigEntry
+) -> None:
+    """Remove devices with no entities."""
+
+    device_reg = dr.async_get(hass)
+    device_list = dr.async_entries_for_config_entry(
+        device_reg, config_entry.entry_id
+    )
+    for device_entry in device_list:
+        if not er.async_entries_for_device(
+            entity_reg,
+            device_entry.id,
+            include_disabled_entities=True,
+        ):
+            _LOGGER.info("Removing device: %s", device_entry.name)
+            device_reg.async_remove_device(device_entry.id)
 
 class ClassSetupMissing(Exception):
     """Raised when a Class func is called before setup."""
@@ -390,106 +494,12 @@ class FritzBoxTools(
         """Event specific per FRITZ!Box entry to signal updates in devices."""
         return f"{DOMAIN}-device-update-{self._unique_id}"
 
-    async def _async_get_wan_access(self, ip_address: str) -> bool | None:
-        """Get WAN access rule for given IP address."""
-        try:
-            wan_access = await self.hass.async_add_executor_job(
-                partial(
-                    self.connection.call_action,
-                    "X_AVM-DE_HostFilter:1",
-                    "GetWANAccessByIP",
-                    NewIPv4Address=ip_address,
-                )
-            )
-            return not wan_access.get("NewDisallow")
-        except FRITZ_EXCEPTIONS as ex:
-            _LOGGER.debug(
-                (
-                    "could not get WAN access rule for client device with IP '%s',"
-                    " error: %s"
-                ),
-                ip_address,
-                ex,
-            )
-            return None
-
-    def _extract_devices_from_attributes(
-        self, host_attributes: list[HostAttributes]
-    ) -> dict[str, Device]:
-        hosts = {}
-        for attributes in host_attributes:
-            if not attributes.get("MACAddress"):
-                continue
-
-            if (wan_access := attributes.get("X_AVM-DE_WANAccess")) is not None:
-                wan_access_result = "granted" in wan_access
-            else:
-                wan_access_result = None
-
-            hosts[attributes["MACAddress"]] = Device(
-                name=attributes["HostName"],
-                connected=attributes["Active"],
-                connected_to="",
-                connection_type="",
-                ip_address=attributes["IPAddress"],
-                ssid=None,
-                wan_access=wan_access_result,
-            )
-        return hosts
-
-    async def _extract_devices_from_info(
-        self, hosts_info: list[HostInfo]
-    ) -> dict[str, Device]:
-        hosts = {}
-        for info in hosts_info:
-            if not info.get("mac"):
-                continue
-
-            if info["ip"]:
-                wan_access_result = await self._async_get_wan_access(info["ip"])
-            else:
-                wan_access_result = None
-
-            hosts[info["mac"]] = Device(
-                name=info["name"],
-                connected=info["status"],
-                connected_to="",
-                connection_type="",
-                ip_address=info["ip"],
-                ssid=None,
-                wan_access=wan_access_result,
-            )
-        return hosts
-
-    async def _async_update_hosts_info(self) -> dict[str, Device]:
-        """Retrieve latest hosts information from the FRITZ!Box."""
-        hosts_attributes: list[HostAttributes] = []
-        hosts_info: list[HostInfo] = []
-        try:
-            try:
-                hosts_attributes = await self.hass.async_add_executor_job(
-                    self.fritz_hosts.get_hosts_attributes
-                )
-                return self._extract_devices_from_attributes(hosts_attributes)
-            except FritzActionError:
-                hosts_info = await self.hass.async_add_executor_job(
-                    self.fritz_hosts.get_hosts_info
-                )
-                return self._extract_devices_from_info(hosts_info)
-        except Exception as ex:  # pylint: disable=[broad-except]
-            if not self.hass.is_stopping:
-                raise HomeAssistantError("Error refreshing hosts info") from ex
-
     def _update_device_info(self) -> tuple[bool, str | None, str | None]:
         """Retrieve latest device information from the FRITZ!Box."""
         info = self.connection.call_action("UserInterface1", "GetInfo")
         version = info.get("NewX_AVM-DE_Version")
         release_url = info.get("NewX_AVM-DE_InfoURL")
         return bool(version), version, release_url
-
-    async def _async_update_device_info(self) -> tuple[bool, str | None, str | None]:
-        """Retrieve latest device information from the FRITZ!Box."""
-        return await self.hass.async_add_executor_job(self._update_device_info)
 
     async def async_update_call_deflections(
         self,
@@ -615,7 +625,7 @@ class FritzBoxTools(
             self._update_available,
             self._latest_firmware,
             self._release_url,
-        ) = await self._async_update_device_info()
+        ) = await self.hass.async_add_executor_job(self._update_device_info)
 
         _LOGGER.debug("Checking devices for FRITZ!Box device %s", self.host)
         _default_consider_home = DEFAULT_CONSIDER_HOME.total_seconds()
@@ -626,7 +636,7 @@ class FritzBoxTools(
         else:
             consider_home = _default_consider_home
 
-        hosts = await self._async_update_hosts_info()
+        hosts = await _async_update_hosts_info(self.hass, self.fritz_hosts, self.connection)
 
         if not self.fritz_status.device_has_mesh_support or (
             self._options
@@ -705,26 +715,7 @@ class FritzBoxTools(
             entities_removed = True
 
         if entities_removed:
-            self._async_remove_empty_devices(entity_reg, config_entry)
-
-    @callback
-    def _async_remove_empty_devices(
-        self, entity_reg: er.EntityRegistry, config_entry: ConfigEntry
-    ) -> None:
-        """Remove devices with no entities."""
-
-        device_reg = dr.async_get(self.hass)
-        device_list = dr.async_entries_for_config_entry(
-            device_reg, config_entry.entry_id
-        )
-        for device_entry in device_list:
-            if not er.async_entries_for_device(
-                entity_reg,
-                device_entry.id,
-                include_disabled_entities=True,
-            ):
-                _LOGGER.info("Removing device: %s", device_entry.name)
-                device_reg.async_remove_device(device_entry.id)
+            _async_remove_empty_devices(entity_reg, config_entry)
 
     async def service_fritzbox(
         self, service_call: ServiceCall, config_entry: ConfigEntry
