@@ -21,7 +21,6 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_get_service(
     hass: HomeAssistant,
-    config: ConfigType,
     discovery_info: DiscoveryInfoType | None = None,
 ) -> HuaweiLteSmsNotificationService | None:
     """Get the notification service."""
