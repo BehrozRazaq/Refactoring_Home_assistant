@@ -51,7 +51,7 @@ DEFAULT_COLOR_TYPE_DATA_V2 = ColorTypeData(
 
 @dataclass
 class TuyaLightEntityDescription(LightEntityDescription):
-    """Describe an Tuya light entity."""
+    """Describe a Tuya light entity."""
 
     brightness_max: DPCode | None = None
     brightness_min: DPCode | None = None
