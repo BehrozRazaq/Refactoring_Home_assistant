@@ -99,7 +99,10 @@ def _ha_is_stopping(activity: str) -> None:
     """Inform that HA is stopping."""
     _LOGGER.info("Cannot execute %s: HomeAssistant is shutting down", activity)
 
-def _extract_devices_from_attributes(host_attributes: list[HostAttributes]) -> dict[str, Device]:
+
+def _extract_devices_from_attributes(
+    host_attributes: list[HostAttributes],
+) -> dict[str, Device]:
     hosts = {}
     for attributes in host_attributes:
         if not attributes.get("MACAddress"):
@@ -121,7 +124,10 @@ def _extract_devices_from_attributes(host_attributes: list[HostAttributes]) -> d
         )
     return hosts
 
-async def _async_get_wan_access(hass: HomeAssistant, connection: FritzConnection, ip_address: str) -> bool | None:
+
+async def _async_get_wan_access(
+    hass: HomeAssistant, connection: FritzConnection, ip_address: str
+) -> bool | None:
     """Get WAN access rule for given IP address."""
     try:
         wan_access = await hass.async_add_executor_job(
@@ -144,14 +150,19 @@ async def _async_get_wan_access(hass: HomeAssistant, connection: FritzConnection
         )
         return None
 
-async def _extract_devices_from_info(hass: HomeAssistant, connection: FritzConnection, hosts_info: list[HostInfo]) -> dict[str, Device]:
+
+async def _extract_devices_from_info(
+    hass: HomeAssistant, connection: FritzConnection, hosts_info: list[HostInfo]
+) -> dict[str, Device]:
     hosts = {}
     for info in hosts_info:
         if not info.get("mac"):
             continue
 
         if info["ip"]:
-            wan_access_result = await _async_get_wan_access(hass, connection, info["ip"])
+            wan_access_result = await _async_get_wan_access(
+                hass, connection, info["ip"]
+            )
         else:
             wan_access_result = None
 
@@ -166,7 +177,10 @@ async def _extract_devices_from_info(hass: HomeAssistant, connection: FritzConne
         )
     return hosts
 
-async def _async_update_hosts_info(hass: HomeAssistant, fritz_hosts: FritzHosts, connection: FritzConnection) -> dict[str, Device]:
+
+async def _async_update_hosts_info(
+    hass: HomeAssistant, fritz_hosts: FritzHosts, connection: FritzConnection
+) -> dict[str, Device]:
     """Retrieve latest hosts information from the FRITZ!Box."""
     hosts_attributes: list[HostAttributes] = []
     hosts_info: list[HostInfo] = []
@@ -177,13 +191,12 @@ async def _async_update_hosts_info(hass: HomeAssistant, fritz_hosts: FritzHosts,
             )
             return _extract_devices_from_attributes(hosts_attributes)
         except FritzActionError:
-            hosts_info = await hass.async_add_executor_job(
-                fritz_hosts.get_hosts_info
-            )
+            hosts_info = await hass.async_add_executor_job(fritz_hosts.get_hosts_info)
             return _extract_devices_from_info(hass, connection, hosts_info)
     except Exception as ex:  # pylint: disable=[broad-except]
         if not hass.is_stopping:
             raise HomeAssistantError("Error refreshing hosts info") from ex
+
 
 @callback
 def _async_remove_empty_devices(
@@ -192,9 +205,7 @@ def _async_remove_empty_devices(
     """Remove devices with no entities."""
 
     device_reg = dr.async_get(hass)
-    device_list = dr.async_entries_for_config_entry(
-        device_reg, config_entry.entry_id
-    )
+    device_list = dr.async_entries_for_config_entry(device_reg, config_entry.entry_id)
     for device_entry in device_list:
         if not er.async_entries_for_device(
             entity_reg,
@@ -203,6 +214,7 @@ def _async_remove_empty_devices(
         ):
             _LOGGER.info("Removing device: %s", device_entry.name)
             device_reg.async_remove_device(device_entry.id)
+
 
 class ClassSetupMissing(Exception):
     """Raised when a Class func is called before setup."""
@@ -540,7 +552,7 @@ class FritzBoxTools(
             async_dispatcher_send(self.hass, self.signal_device_new)
 
     def _get_meshed_interfaces(self, topology: dict) -> dict[str, Interface]:
-        """Gets all meshed devices"""
+        """Gets all meshed devices."""
         meshed_devices = {}
         for node in topology.get("nodes", []):
             if not node["is_meshed"]:
@@ -559,7 +571,12 @@ class FritzBoxTools(
                     self.mesh_role = MeshRoles(node["mesh_role"])
         return meshed_devices
 
-    def _inject_info_to_device(self, device: Device, node_interfaces: dict, meshed_interfaces: dict[str, Interface]):
+    def _inject_info_to_device(
+        self,
+        device: Device,
+        node_interfaces: dict,
+        meshed_interfaces: dict[str, Interface],
+    ):
         for link in node_interfaces["node_links"]:
             intf = meshed_interfaces.get(link["node_interface_1_uid"])
             if intf is not None:
@@ -569,8 +586,10 @@ class FritzBoxTools(
                 device.connected_to = intf["device"]
                 device.connection_type = intf["type"]
                 device.ssid = intf.get("ssid")
-    
-    def _update_device_list_old(self, hosts: dict[str, Device], consider_home: float) -> bool:
+
+    def _update_device_list_old(
+        self, hosts: dict[str, Device], consider_home: float
+    ) -> bool:
         new_device = False
         _LOGGER.debug(
             "Using old hosts discovery method. (Mesh not supported or user option)"
@@ -581,7 +600,9 @@ class FritzBoxTools(
                 new_device = True
         return new_device
 
-    async def _update_device_list(self, hosts: dict[str, Device], consider_home: float) -> bool:
+    async def _update_device_list(
+        self, hosts: dict[str, Device], consider_home: float
+    ) -> bool:
         try:
             if not (
                 topology := await self.hass.async_add_executor_job(
@@ -636,7 +657,9 @@ class FritzBoxTools(
         else:
             consider_home = _default_consider_home
 
-        hosts = await _async_update_hosts_info(self.hass, self.fritz_hosts, self.connection)
+        hosts = await _async_update_hosts_info(
+            self.hass, self.fritz_hosts, self.connection
+        )
 
         if not self.fritz_status.device_has_mesh_support or (
             self._options
