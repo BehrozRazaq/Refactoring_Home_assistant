@@ -5,7 +5,7 @@ import pytest
 
 # Functions to be compared in test ( new_string_concat(...) and old_string_concat(...) )
 def new_string_concat(str1, str2, str3):
-    result = ''.join(filter(None, [str1, str2, str3]))
+    result = ''.join(filter(None, map(str, [str1, str2, str3])))
     return result
 
 
