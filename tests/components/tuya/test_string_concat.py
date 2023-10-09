@@ -32,6 +32,17 @@ def generate_random_string(min_length, max_length):
     (generate_random_string(1, 15), generate_random_string(1, 15), generate_random_string(1, 15)),
     # Test case 4: combination
     (None, '', generate_random_string(1, 15)),
+    # With int involved:
+    # Test case 5: only int
+    (random.randint(-100, 100), random.randint(-100, 100), random.randint(-100, 100)),
+    # Test case 6: combination with int
+    (random.randint(-100, 100), None, ''),
+    # Test case 7: combination with int
+    (random.randint(-100, 100), None, generate_random_string(1, 15)),
+    # Test case 8: combination with int
+    (random.randint(-100, 100), '', generate_random_string(1, 15)),
+
+
 ])
 def test_string_concat_same(input1, input2, input3):
     expected_string = old_string_concat(input1, input2, input3)
