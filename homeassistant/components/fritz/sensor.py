@@ -32,7 +32,14 @@ from .common import (
     FritzBoxBaseCoordinatorEntity,
     FritzEntityDescription,
 )
-from .const import DOMAIN, DSL_CONNECTION, ICON_DOWNLOAD, ICON_EARTH, ICON_UPLOAD, UPTIME_DEVIATION
+from .const import (
+    DOMAIN,
+    DSL_CONNECTION,
+    ICON_DOWNLOAD,
+    ICON_EARTH,
+    ICON_UPLOAD,
+    UPTIME_DEVIATION,
+)
 
 _LOGGER = logging.getLogger(__name__)
 

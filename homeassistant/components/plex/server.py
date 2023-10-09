@@ -6,14 +6,14 @@ import ssl
 import time
 from urllib.parse import urlparse
 
-from plexapi.client import PlexClient
-from plexapi.myplex import MyPlexResource
 from plexapi.base import PlexObject
+from plexapi.client import PlexClient
 from plexapi.exceptions import BadRequest, NotFound, Unauthorized
-from plexapi.server import Account
 import plexapi.myplex
+from plexapi.myplex import MyPlexResource
 import plexapi.playqueue
 import plexapi.server
+from plexapi.server import Account
 from requests import Session
 import requests.exceptions
 
@@ -322,7 +322,9 @@ class PlexServer:
             PLEX_UPDATE_SENSOR_SIGNAL.format(self.machine_identifier),
         )
 
-    def _fetch_platform_data(self) -> tuple[list[PlexClient], list[PlexObject], list[MyPlexResource]]:
+    def _fetch_platform_data(
+        self,
+    ) -> tuple[list[PlexClient], list[PlexObject], list[MyPlexResource]]:
         """Fetch all data from the Plex server in a single method."""
         return (
             self._plex_server.clients(),
@@ -330,13 +332,17 @@ class PlexServer:
             self.plextv_clients(),
         )
 
-
-    def _process_device(self, source: str, device: PlexClient, clients: dict[str, dict]):
+    def _process_device(
+        self, source: str, device: PlexClient, clients: dict[str, dict]
+    ):
         self._known_idle.discard(device.machineIdentifier)
-        clients.setdefault(device.machineIdentifier, {
-            "device": device,
-            PLAYER_SOURCE: source,
-        })
+        clients.setdefault(
+            device.machineIdentifier,
+            {
+                "device": device,
+                PLAYER_SOURCE: source,
+            },
+        )
         if (
             "ignored" not in clients[device.machineIdentifier]
             and self.option_ignore_plexweb_clients
@@ -352,7 +358,9 @@ class PlexServer:
                 )
             return
 
-        if device.machineIdentifier not in self._created_clients and clients[device.machineIdentifier].setdefault("new", True):
+        if device.machineIdentifier not in self._created_clients and clients[
+            device.machineIdentifier
+        ].setdefault("new", True):
             _LOGGER.debug(
                 "New %s from %s: %s",
                 device.product,
@@ -360,8 +368,14 @@ class PlexServer:
                 device.machineIdentifier,
             )
 
-
-    def _connect_to_client(self, source: str, clients: dict[str, dict], baseurl: str, machine_identifier: str, name="Unknown"):
+    def _connect_to_client(
+        self,
+        source: str,
+        clients: dict[str, dict],
+        baseurl: str,
+        machine_identifier: str,
+        name="Unknown",
+    ):
         """Connect to a Plex client and return a PlexClient instance."""
         try:
             client = PlexClient(
@@ -387,23 +401,21 @@ class PlexServer:
             self._client_device_cache[client.machineIdentifier] = client
             self._process_device(source, client, clients)
 
-
     def _connect_to_resource(self, clients: dict[str, dict], resource: MyPlexResource):
         """Connect to a plex.tv resource and return a Plex client."""
         try:
             client: PlexClient = resource.connect(timeout=3)
             _LOGGER.debug("Resource connection successful to plex.tv: %s", client)
         except NotFound:
-            _LOGGER.error(
-                "Resource connection failed to plex.tv: %s", resource.name
-            )
+            _LOGGER.error("Resource connection failed to plex.tv: %s", resource.name)
         else:
             client.proxyThroughServer(value=False, server=self._plex_server)
             self._client_device_cache[client.machineIdentifier] = client
             self._process_device("plex.tv", client, clients)
 
-
-    def _connect_new_clients(self, clients: dict[str, dict], plextv_clients: list[MyPlexResource]):
+    def _connect_new_clients(
+        self, clients: dict[str, dict], plextv_clients: list[MyPlexResource]
+    ):
         """Create connections to newly discovered clients."""
         for gdm_entry in get_plex_data(self.hass)[GDM_SCANNER].entries:
             machine_identifier = gdm_entry["data"]["Resource-Identifier"]
@@ -412,11 +424,11 @@ class PlexServer:
                 if client is not None:
                     self._process_device("GDM", client, clients)
             elif machine_identifier not in clients:
-                baseurl = (
-                    f"http://{gdm_entry['from'][0]}:{gdm_entry['data']['Port']}"
-                )
+                baseurl = f"http://{gdm_entry['from'][0]}:{gdm_entry['data']['Port']}"
                 name = gdm_entry["data"]["Name"]
-                self._connect_to_client("GDM", clients, baseurl, machine_identifier, name)
+                self._connect_to_client(
+                    "GDM", clients, baseurl, machine_identifier, name
+                )
 
         for plextv_client in plextv_clients:
             if plextv_client.clientIdentifier in self._client_device_cache:
@@ -426,8 +438,12 @@ class PlexServer:
             elif plextv_client.clientIdentifier not in clients:
                 self._connect_to_resource(clients, plextv_client)
 
-
-    def _process_sessions(self, clients: dict[str, dict], sessions: list[PlexObject], monitored_users: set[Account]):
+    def _process_sessions(
+        self,
+        clients: dict[str, dict],
+        sessions: list[PlexObject],
+        monitored_users: set[Account],
+    ):
         live_session_keys = {x.sessionKey for x in sessions}
         for unique_id, session in list(self.active_sessions.items()):
             if session.session_key not in live_session_keys:
@@ -455,7 +471,9 @@ class PlexServer:
                 continue
 
             self._process_device("session", player, clients)
-            clients[player.machineIdentifier]["session"] = self.active_sessions[unique_id]
+            clients[player.machineIdentifier]["session"] = self.active_sessions[
+                unique_id
+            ]
 
     def _send_sensor_signals(self, clients: dict[str, dict]):
         new_entity_configs = []
@@ -474,7 +492,9 @@ class PlexServer:
                     client_data.get(PLAYER_SOURCE),
                 )
 
-        self._known_clients.update([id for id in clients.keys() if "new" in clients[id] or "ignored" in clients[id]])
+        self._known_clients.update(
+            [id for id in clients if "new" in clients[id] or "ignored" in clients[id]]
+        )
 
         if new_entity_configs:
             async_dispatcher_send(
@@ -531,11 +551,17 @@ class PlexServer:
         for device in devices:
             self._process_device("PMS", device, clients)
 
-        await self.hass.async_add_executor_job(self._connect_new_clients, clients, plextv_clients)
-        await self.hass.async_add_executor_job(self._process_sessions, clients, sessions, monitored_users)
+        await self.hass.async_add_executor_job(
+            self._connect_new_clients, clients, plextv_clients
+        )
+        await self.hass.async_add_executor_job(
+            self._process_sessions, clients, sessions, monitored_users
+        )
 
         idle_clients = (
-            self._known_clients - self._known_idle - set([id for id in clients.keys() if "ignored" in clients[id]])
+            self._known_clients
+            - self._known_idle
+            - {id for id in clients if "ignored" in clients[id]}
         ).difference(clients)
         for client_id in idle_clients:
             self.async_refresh_entity(client_id, None, None, None)
