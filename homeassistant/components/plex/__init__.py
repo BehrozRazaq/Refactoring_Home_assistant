@@ -84,7 +84,7 @@ async def async_browse_media(hass, media_content_type, media_content_id, platfor
     )
 
 
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+async def async_setup(hass: HomeAssistant, _: ConfigType) -> bool:
     """Set up the Plex component."""
     gdm = GDM()
 
