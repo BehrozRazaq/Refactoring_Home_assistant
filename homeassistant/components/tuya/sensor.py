@@ -1119,7 +1119,9 @@ class TuyaSensorEntity(TuyaEntity, SensorEntity):
         super().__init__(device, device_manager)
         self.entity_description = description
 
-        self._attr_unique_id = ''.join(filter(None, map(str, [super().unique_id, description.key, description.subkey])))
+        self._attr_unique_id = (
+            f"{super().unique_id}{description.key}{description.subkey or ''}"
+        )
 
         self.assign_type(description)
 
