@@ -113,10 +113,10 @@ def devices_from_config(domain_config):
 
 
 async def async_setup_platform(
-    hass: HomeAssistant,
+    _hass: HomeAssistant,
     config: ConfigType,
     async_add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType | None = None,
+    _discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
     """Set up the Rflink cover platform."""
     async_add_entities(devices_from_config(config))

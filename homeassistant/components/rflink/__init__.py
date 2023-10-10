@@ -600,10 +600,10 @@ class SwitchableRflinkDevice(RflinkCommand, RestoreEntity):
         elif command in ["off", "alloff"]:
             self._state = False
 
-    async def async_turn_on(self, **kwargs):
+    async def async_turn_on(self, **_kwargs):
         """Turn the device on."""
         await self._async_handle_command("turn_on")
 
-    async def async_turn_off(self, **kwargs):
+    async def async_turn_off(self, **_kwargs):
         """Turn the device off."""
         await self._async_handle_command("turn_off")
