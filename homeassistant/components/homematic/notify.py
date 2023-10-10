@@ -37,7 +37,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
 def get_service(
     hass: HomeAssistant,
     config: ConfigType,
-    discovery_info: DiscoveryInfoType | None = None,
+    _discovery_info: DiscoveryInfoType | None = None,
 ) -> HomematicNotificationService:
     """Get the Homematic notification service."""
     data = {
