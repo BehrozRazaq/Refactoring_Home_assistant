@@ -209,6 +209,159 @@ SCHEMA_SERVICE_PUT_PARAMSET = vol.Schema(
 )
 
 
+def _register_services(hass: HomeAssistant, homematic, entity_hubs) -> None:
+    def _service_handle_value(service: ServiceCall) -> None:
+        """Service to call setValue method for HomeMatic system variable."""
+        entity_ids = service.data.get(ATTR_ENTITY_ID)
+        name = service.data[ATTR_NAME]
+        value = service.data[ATTR_VALUE]
+
+        if entity_ids:
+            entities = [
+                entity for entity in entity_hubs if entity.entity_id in entity_ids
+            ]
+        else:
+            entities = entity_hubs
+
+        if not entities:
+            _LOGGER.error("No HomeMatic hubs available")
+            return
+
+        for hub in entities:
+            hub.hm_set_variable(name, value)
+
+    def _hm_service_virtualkey(service: ServiceCall) -> None:
+        """Service to handle virtualkey servicecalls."""
+        address = service.data.get(ATTR_ADDRESS)
+        channel = service.data.get(ATTR_CHANNEL)
+        param = service.data.get(ATTR_PARAM)
+
+        # Device not found
+        hmdevice = _device_from_servicecall(hass, service)
+        if hmdevice is None:
+            _LOGGER.error("%s not found for service virtualkey!", address)
+            return
+
+        # Parameter doesn't exist for device
+        if param not in hmdevice.ACTIONNODE:
+            _LOGGER.error("%s not datapoint in hm device %s", param, address)
+            return
+
+        # Channel doesn't exist for device
+        if channel not in hmdevice.ACTIONNODE[param]:
+            _LOGGER.error("%i is not a channel in hm device %s", channel, address)
+            return
+
+        # Call parameter
+        hmdevice.actionNodeData(param, True, channel)
+
+    def _service_handle_reconnect(service: ServiceCall) -> None:
+        """Service to reconnect all HomeMatic hubs."""
+        homematic.reconnect()
+
+    def _service_handle_device(service: ServiceCall) -> None:
+        """Service to call setValue method for HomeMatic devices."""
+        address = service.data[ATTR_ADDRESS]
+        channel = service.data[ATTR_CHANNEL]
+        param = service.data[ATTR_PARAM]
+        value = service.data[ATTR_VALUE]
+        value_type = service.data.get(ATTR_VALUE_TYPE)
+
+        # Convert value into correct XML-RPC Type.
+        # https://docs.python.org/3/library/xmlrpc.client.html#xmlrpc.client.ServerProxy
+        if value_type:
+            if value_type == "int":
+                value = int(value)
+            elif value_type == "double":
+                value = float(value)
+            elif value_type == "boolean":
+                value = bool(value)
+            elif value_type == "dateTime.iso8601":
+                value = datetime.strptime(value, "%Y%m%dT%H:%M:%S")
+            else:
+                # Default is 'string'
+                value = str(value)
+
+        # Device not found
+        hmdevice = _device_from_servicecall(hass, service)
+        if hmdevice is None:
+            _LOGGER.error("%s not found!", address)
+            return
+
+        hmdevice.setValue(param, value, channel)
+
+    def _service_handle_install_mode(service: ServiceCall) -> None:
+        """Service to set interface into install mode."""
+        interface = service.data.get(ATTR_INTERFACE)
+        mode = service.data.get(ATTR_MODE)
+        time = service.data.get(ATTR_TIME)
+        address = service.data.get(ATTR_ADDRESS)
+
+        homematic.setInstallMode(interface, t=time, mode=mode, address=address)
+
+    def _service_put_paramset(service: ServiceCall) -> None:
+        """Service to call the putParamset method on a HomeMatic connection."""
+        interface = service.data[ATTR_INTERFACE]
+        address = service.data[ATTR_ADDRESS]
+        paramset_key = service.data[ATTR_PARAMSET_KEY]
+        # When passing in the paramset from a YAML file we get an OrderedDict
+        # here instead of a dict, so add this explicit cast.
+        # The service schema makes sure that this cast works.
+        paramset = dict(service.data[ATTR_PARAMSET])
+        rx_mode = service.data.get(ATTR_RX_MODE)
+        _LOGGER.debug(
+            "Calling putParamset: %s, %s, %s, %s, %s",
+            interface,
+            address,
+            paramset_key,
+            paramset,
+            rx_mode,
+        )
+        homematic.putParamset(interface, address, paramset_key, paramset, rx_mode)
+
+    hass.services.register(
+        DOMAIN,
+        SERVICE_VIRTUALKEY,
+        _hm_service_virtualkey,
+        schema=SCHEMA_SERVICE_VIRTUALKEY,
+    )
+
+    hass.services.register(
+        DOMAIN,
+        SERVICE_SET_VARIABLE_VALUE,
+        _service_handle_value,
+        schema=SCHEMA_SERVICE_SET_VARIABLE_VALUE,
+    )
+
+    hass.services.register(
+        DOMAIN,
+        SERVICE_RECONNECT,
+        _service_handle_reconnect,
+        schema=SCHEMA_SERVICE_RECONNECT,
+    )
+
+    hass.services.register(
+        DOMAIN,
+        SERVICE_SET_DEVICE_VALUE,
+        _service_handle_device,
+        schema=SCHEMA_SERVICE_SET_DEVICE_VALUE,
+    )
+
+    hass.services.register(
+        DOMAIN,
+        SERVICE_SET_INSTALL_MODE,
+        _service_handle_install_mode,
+        schema=SCHEMA_SERVICE_SET_INSTALL_MODE,
+    )
+
+    hass.services.register(
+        DOMAIN,
+        SERVICE_PUT_PARAMSET,
+        _service_put_paramset,
+        schema=SCHEMA_SERVICE_PUT_PARAMSET,
+    )
+
+
 def setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Homematic component."""
     conf = config[DOMAIN]
@@ -262,157 +415,7 @@ def setup(hass: HomeAssistant, config: ConfigType) -> bool:
     for hub_name in conf[CONF_HOSTS]:
         entity_hubs.append(HMHub(hass, homematic, hub_name))
 
-    def _hm_service_virtualkey(service: ServiceCall) -> None:
-        """Service to handle virtualkey servicecalls."""
-        address = service.data.get(ATTR_ADDRESS)
-        channel = service.data.get(ATTR_CHANNEL)
-        param = service.data.get(ATTR_PARAM)
-
-        # Device not found
-        hmdevice = _device_from_servicecall(hass, service)
-        if hmdevice is None:
-            _LOGGER.error("%s not found for service virtualkey!", address)
-            return
-
-        # Parameter doesn't exist for device
-        if param not in hmdevice.ACTIONNODE:
-            _LOGGER.error("%s not datapoint in hm device %s", param, address)
-            return
-
-        # Channel doesn't exist for device
-        if channel not in hmdevice.ACTIONNODE[param]:
-            _LOGGER.error("%i is not a channel in hm device %s", channel, address)
-            return
-
-        # Call parameter
-        hmdevice.actionNodeData(param, True, channel)
-
-    hass.services.register(
-        DOMAIN,
-        SERVICE_VIRTUALKEY,
-        _hm_service_virtualkey,
-        schema=SCHEMA_SERVICE_VIRTUALKEY,
-    )
-
-    def _service_handle_value(service: ServiceCall) -> None:
-        """Service to call setValue method for HomeMatic system variable."""
-        entity_ids = service.data.get(ATTR_ENTITY_ID)
-        name = service.data[ATTR_NAME]
-        value = service.data[ATTR_VALUE]
-
-        if entity_ids:
-            entities = [
-                entity for entity in entity_hubs if entity.entity_id in entity_ids
-            ]
-        else:
-            entities = entity_hubs
-
-        if not entities:
-            _LOGGER.error("No HomeMatic hubs available")
-            return
-
-        for hub in entities:
-            hub.hm_set_variable(name, value)
-
-    hass.services.register(
-        DOMAIN,
-        SERVICE_SET_VARIABLE_VALUE,
-        _service_handle_value,
-        schema=SCHEMA_SERVICE_SET_VARIABLE_VALUE,
-    )
-
-    def _service_handle_reconnect(service: ServiceCall) -> None:
-        """Service to reconnect all HomeMatic hubs."""
-        homematic.reconnect()
-
-    hass.services.register(
-        DOMAIN,
-        SERVICE_RECONNECT,
-        _service_handle_reconnect,
-        schema=SCHEMA_SERVICE_RECONNECT,
-    )
-
-    def _service_handle_device(service: ServiceCall) -> None:
-        """Service to call setValue method for HomeMatic devices."""
-        address = service.data[ATTR_ADDRESS]
-        channel = service.data[ATTR_CHANNEL]
-        param = service.data[ATTR_PARAM]
-        value = service.data[ATTR_VALUE]
-        value_type = service.data.get(ATTR_VALUE_TYPE)
-
-        # Convert value into correct XML-RPC Type.
-        # https://docs.python.org/3/library/xmlrpc.client.html#xmlrpc.client.ServerProxy
-        if value_type:
-            if value_type == "int":
-                value = int(value)
-            elif value_type == "double":
-                value = float(value)
-            elif value_type == "boolean":
-                value = bool(value)
-            elif value_type == "dateTime.iso8601":
-                value = datetime.strptime(value, "%Y%m%dT%H:%M:%S")
-            else:
-                # Default is 'string'
-                value = str(value)
-
-        # Device not found
-        hmdevice = _device_from_servicecall(hass, service)
-        if hmdevice is None:
-            _LOGGER.error("%s not found!", address)
-            return
-
-        hmdevice.setValue(param, value, channel)
-
-    hass.services.register(
-        DOMAIN,
-        SERVICE_SET_DEVICE_VALUE,
-        _service_handle_device,
-        schema=SCHEMA_SERVICE_SET_DEVICE_VALUE,
-    )
-
-    def _service_handle_install_mode(service: ServiceCall) -> None:
-        """Service to set interface into install mode."""
-        interface = service.data.get(ATTR_INTERFACE)
-        mode = service.data.get(ATTR_MODE)
-        time = service.data.get(ATTR_TIME)
-        address = service.data.get(ATTR_ADDRESS)
-
-        homematic.setInstallMode(interface, t=time, mode=mode, address=address)
-
-    hass.services.register(
-        DOMAIN,
-        SERVICE_SET_INSTALL_MODE,
-        _service_handle_install_mode,
-        schema=SCHEMA_SERVICE_SET_INSTALL_MODE,
-    )
-
-    def _service_put_paramset(service: ServiceCall) -> None:
-        """Service to call the putParamset method on a HomeMatic connection."""
-        interface = service.data[ATTR_INTERFACE]
-        address = service.data[ATTR_ADDRESS]
-        paramset_key = service.data[ATTR_PARAMSET_KEY]
-        # When passing in the paramset from a YAML file we get an OrderedDict
-        # here instead of a dict, so add this explicit cast.
-        # The service schema makes sure that this cast works.
-        paramset = dict(service.data[ATTR_PARAMSET])
-        rx_mode = service.data.get(ATTR_RX_MODE)
-
-        _LOGGER.debug(
-            "Calling putParamset: %s, %s, %s, %s, %s",
-            interface,
-            address,
-            paramset_key,
-            paramset,
-            rx_mode,
-        )
-        homematic.putParamset(interface, address, paramset_key, paramset, rx_mode)
-
-    hass.services.register(
-        DOMAIN,
-        SERVICE_PUT_PARAMSET,
-        _service_put_paramset,
-        schema=SCHEMA_SERVICE_PUT_PARAMSET,
-    )
+    _register_services(hass, homematic, entity_hubs)
 
     return True
 
@@ -445,39 +448,45 @@ def _system_callback_handler(hass, config, src, *args):
                 hmdevice.setEventCallback(callback=bound_event_callback, bequeath=True)
 
         # Create Home Assistant entities
-        if addresses:
-            for component_name, discovery_type in (
-                ("switch", DISCOVER_SWITCHES),
-                ("light", DISCOVER_LIGHTS),
-                ("cover", DISCOVER_COVER),
-                ("binary_sensor", DISCOVER_BINARY_SENSORS),
-                ("sensor", DISCOVER_SENSORS),
-                ("climate", DISCOVER_CLIMATE),
-                ("lock", DISCOVER_LOCKS),
-                ("binary_sensor", DISCOVER_BATTERY),
-            ):
-                # Get all devices of a specific type
-                found_devices = _get_devices(hass, discovery_type, addresses, interface)
-
-                # When devices of this type are found
-                # they are setup in Home Assistant and a discovery event is fired
-                if found_devices:
-                    discovery.load_platform(
-                        hass,
-                        component_name,
-                        DOMAIN,
-                        {
-                            ATTR_DISCOVER_DEVICES: found_devices,
-                            ATTR_DISCOVERY_TYPE: discovery_type,
-                        },
-                        config,
-                    )
+        _create_home_assistant_entities(addresses, hass, interface, config)
 
     # Homegear error message
     elif src == "error":
         _LOGGER.error("Error: %s", args)
-        (interface_id, errorcode, message) = args
+        (errorcode, message) = args
         hass.bus.fire(EVENT_ERROR, {ATTR_ERRORCODE: errorcode, ATTR_MESSAGE: message})
+
+
+def _create_home_assistant_entities(
+    addresses, hass: HomeAssistant, interface, config
+) -> None:
+    if addresses:
+        for component_name, discovery_type in (
+            ("switch", DISCOVER_SWITCHES),
+            ("light", DISCOVER_LIGHTS),
+            ("cover", DISCOVER_COVER),
+            ("binary_sensor", DISCOVER_BINARY_SENSORS),
+            ("sensor", DISCOVER_SENSORS),
+            ("climate", DISCOVER_CLIMATE),
+            ("lock", DISCOVER_LOCKS),
+            ("binary_sensor", DISCOVER_BATTERY),
+        ):
+            # Get all devices of a specific type
+            found_devices = _get_devices(hass, discovery_type, addresses, interface)
+
+            # When devices of this type are found
+            # they are setup in Home Assistant and a discovery event is fired
+            if found_devices:
+                discovery.load_platform(
+                    hass,
+                    component_name,
+                    DOMAIN,
+                    {
+                        ATTR_DISCOVER_DEVICES: found_devices,
+                        ATTR_DISCOVERY_TYPE: discovery_type,
+                    },
+                    config,
+                )
 
 
 def _get_devices(hass, discovery_type, keys, interface):
