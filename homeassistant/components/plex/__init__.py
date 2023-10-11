@@ -123,7 +123,7 @@ def _get_plex_account(plex_server):
     except (plexapi.exceptions.BadRequest, plexapi.exceptions.Unauthorized):
         return None
 
-def setup_websocket(hass, entry, plex_server, server_config, server_id):
+def _setup_websocket(hass, entry, plex_server, server_config, server_id):
     @callback
     def plex_websocket_callback(msgtype, data, error):
         """Handle callbacks from plexwebsocket library."""
@@ -240,7 +240,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass_data[DISPATCHERS].setdefault(server_id, [])
     hass_data[DISPATCHERS][server_id].append(unsub)
 
-    websocket = setup_websocket(hass, entry, plex_server, server_config, server_id)
+    websocket = _setup_websocket(hass, entry, plex_server, server_config, server_id)
     hass_data[WEBSOCKETS][server_id] = websocket
 
     def start_websocket_session(platform):
