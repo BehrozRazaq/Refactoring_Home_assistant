@@ -114,6 +114,7 @@ def _check_for_insteon_type(
             subnode_id = int(node.address.split(" ")[-1], 16)
 
             return _check_node_type(isy_data, device_type, platform, subnode_id, node)
+            return True
 
     return False
 
@@ -124,11 +125,10 @@ def _check_node_type(
     platform: Platform,
     subnode_id: int,
     node: Group | Node,
-) -> bool:
+) -> None:
     # FanLinc, which has a light module as one of its nodes.
     if platform == Platform.FAN and subnode_id == SUBNODE_FANLINC_LIGHT:
         isy_data.nodes[Platform.LIGHT].append(node)
-        return True
 
     # Thermostats, which has a "Heat" and "Cool" sub-node on address 2 and 3
     if platform == Platform.CLIMATE and subnode_id in (
@@ -136,7 +136,6 @@ def _check_node_type(
         SUBNODE_CLIMATE_HEAT,
     ):
         isy_data.nodes[Platform.BINARY_SENSOR].append(node)
-        return True
 
     # IOLincs which have a sensor and relay on 2 different nodes
     if (
@@ -145,7 +144,6 @@ def _check_node_type(
         and subnode_id == SUBNODE_IOLINC_RELAY
     ):
         isy_data.nodes[Platform.SWITCH].append(node)
-        return True
 
     # Smartenit EZIO2X4
     if (
@@ -154,10 +152,8 @@ def _check_node_type(
         and subnode_id in SUBNODE_EZIO2X4_SENSORS
     ):
         isy_data.nodes[Platform.BINARY_SENSOR].append(node)
-        return True
 
     isy_data.nodes[platform].append(node)
-    return True
 
 
 def _check_for_zwave_cat(

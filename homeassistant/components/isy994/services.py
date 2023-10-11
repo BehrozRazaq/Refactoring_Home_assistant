@@ -121,7 +121,7 @@ SERVICE_SEND_PROGRAM_COMMAND_SCHEMA = vol.All(
 
 
 @callback
-async def async_setup_services(hass: HomeAssistant) -> None:
+def async_setup_services(hass: HomeAssistant) -> None: # noqa: C901
     """Create and register services for the ISY integration."""
     existing_services = hass.services.async_services().get(DOMAIN)
     if existing_services and SERVICE_SEND_PROGRAM_COMMAND in existing_services:
