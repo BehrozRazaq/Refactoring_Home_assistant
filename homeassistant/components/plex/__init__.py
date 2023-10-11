@@ -127,31 +127,30 @@ def _setup_websocket(hass, entry, plex_server, server_config, server_id):
     @callback
     def plex_websocket_callback(msgtype, data, error):
         """Handle callbacks from plexwebsocket library."""
-        if msgtype == SIGNAL_CONNECTION_STATE:
-            if data == STATE_CONNECTED:
-                _LOGGER.debug("Websocket to %s successful", entry.data[CONF_SERVER])
-                hass.async_create_task(plex_server.async_update_platforms())
-            elif data == STATE_DISCONNECTED:
-                _LOGGER.debug(
-                    "Websocket to %s disconnected, retrying", entry.data[CONF_SERVER]
-                )
-            # Stopped websockets without errors are expected during shutdown and ignored
-            elif data == STATE_STOPPED and error:
-                _LOGGER.error(
-                    "Websocket to %s failed, aborting [Error: %s]",
-                    entry.data[CONF_SERVER],
-                    error,
-                )
-                hass.async_create_task(hass.config_entries.async_reload(entry.entry_id))
-
+        if msgtype == "status" and data["StatusNotification"][0]["title"] == "Library scan complete":
+            async_dispatcher_send(
+                hass,
+                PLEX_UPDATE_LIBRARY_SIGNAL.format(server_id),
+            )
         elif msgtype == "playing":
             hass.async_create_task(plex_server.async_update_session(data))
-        elif msgtype == "status":
-            if data["StatusNotification"][0]["title"] == "Library scan complete":
-                async_dispatcher_send(
-                    hass,
-                    PLEX_UPDATE_LIBRARY_SIGNAL.format(server_id),
-                )
+        elif msgtype != SIGNAL_CONNECTION_STATE:
+            return
+        elif data == STATE_CONNECTED:
+            _LOGGER.debug("Websocket to %s successful", entry.data[CONF_SERVER])
+            hass.async_create_task(plex_server.async_update_platforms())
+        elif data == STATE_DISCONNECTED:
+            _LOGGER.debug(
+                "Websocket to %s disconnected, retrying", entry.data[CONF_SERVER]
+            )
+        # Stopped websockets without errors are expected during shutdown and ignored
+        elif data == STATE_STOPPED and error:
+            _LOGGER.error(
+                "Websocket to %s failed, aborting [Error: %s]",
+                entry.data[CONF_SERVER],
+                error,
+            )
+            hass.async_create_task(hass.config_entries.async_reload(entry.entry_id))
 
     session = async_get_clientsession(hass)
     subscriptions = ["playing", "status"]
