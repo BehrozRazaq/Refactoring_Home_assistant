@@ -64,7 +64,7 @@ async def async_setup_entry(
     if (hosts := _get_hosts(router, True)) is None:
         return
 
-    tracked = _initialize_tracked_entites()
+    tracked = _initialize_tracked_entites(hass, config_entry, async_add_entities, router, hosts)
 
     # Tell parent router to poll hosts list to gather new devices
     router.subscriptions[KEY_LAN_HOST_INFO].append(_DEVICE_SCAN)

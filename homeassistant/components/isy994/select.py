@@ -113,7 +113,7 @@ def _get_select_options(node: Node, control: str) -> list[str] | None:
     if control == CMD_BACKLIGHT:
         return list[str](
             BACKLIGHT_INDEX
-        )  # aomehow this was not seen as a list of strings.
+        )  # somehow this was not seen as a list of strings.
     uom = node.aux_properties[control].uom
     if uom == UOM_INDEX:
         options_dict = UOM_TO_STATES.get(uom)
