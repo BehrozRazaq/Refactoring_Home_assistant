@@ -101,7 +101,7 @@ def _ha_is_stopping(activity: str) -> None:
 
 
 def _extract_devices_from_attributes(
-    host_attributes: list[HostAttributes],
+    host_attributes: list[dict],
 ) -> dict[str, Device]:
     hosts = {}
     for attributes in host_attributes:
@@ -152,7 +152,7 @@ async def _async_get_wan_access(
 
 
 async def _extract_devices_from_info(
-    hass: HomeAssistant, connection: FritzConnection, hosts_info: list[HostInfo]
+    hass: HomeAssistant, connection: FritzConnection, hosts_info: list[dict]
 ) -> dict[str, Device]:
     hosts = {}
     for info in hosts_info:
@@ -182,8 +182,6 @@ async def _async_update_hosts_info(
     hass: HomeAssistant, fritz_hosts: FritzHosts, connection: FritzConnection
 ) -> dict[str, Device]:
     """Retrieve latest hosts information from the FRITZ!Box."""
-    hosts_attributes: list[HostAttributes] = []
-    hosts_info: list[HostInfo] = []
     try:
         try:
             hosts_attributes = await hass.async_add_executor_job(
@@ -192,10 +190,11 @@ async def _async_update_hosts_info(
             return _extract_devices_from_attributes(hosts_attributes)
         except FritzActionError:
             hosts_info = await hass.async_add_executor_job(fritz_hosts.get_hosts_info)
-            return _extract_devices_from_info(hass, connection, hosts_info)
+            return await _extract_devices_from_info(hass, connection, hosts_info)
     except Exception as ex:  # pylint: disable=[broad-except]
         if not hass.is_stopping:
             raise HomeAssistantError("Error refreshing hosts info") from ex
+        return {}
 
 
 @callback
@@ -531,7 +530,7 @@ class FritzBoxTools(
         return {}
 
     def manage_device_info(
-        self, dev_info: Device, dev_mac: str, consider_home: bool
+        self, dev_info: Device, dev_mac: str, consider_home: float
     ) -> bool:
         """Update device lists."""
         _LOGGER.debug("Client dev_info: %s", dev_info)
@@ -614,7 +613,7 @@ class FritzBoxTools(
         except FritzActionError:
             self.mesh_role = MeshRoles.SLAVE
             # Avoid duplicating device trackers
-            return
+            return False
         mesh_intf = self._get_meshed_interfaces(topology)
         new_device = False
         for node in topology.get("nodes", []):
@@ -697,7 +696,7 @@ class FritzBoxTools(
         self, config_entry: ConfigEntry | None = None
     ) -> None:
         """Trigger device trackers cleanup."""
-        device_hosts = await self._async_update_hosts_info()
+        device_hosts = await _async_update_hosts_info(self.hass, self.fritz_hosts, self.connection)
         entity_reg: er.EntityRegistry = er.async_get(self.hass)
 
         if config_entry is None:
@@ -738,7 +737,7 @@ class FritzBoxTools(
             entities_removed = True
 
         if entities_removed:
-            _async_remove_empty_devices(entity_reg, config_entry)
+            _async_remove_empty_devices(self.hass, entity_reg, config_entry)
 
     async def service_fritzbox(
         self, service_call: ServiceCall, config_entry: ConfigEntry
