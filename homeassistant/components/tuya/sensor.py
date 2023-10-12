@@ -35,6 +35,7 @@ from .const import (
     DPCode,
     DPType,
     UnitOfMeasurement,
+    Icon,
 )
 
 
@@ -58,7 +59,7 @@ BATTERY_SENSORS: tuple[TuyaSensorEntityDescription, ...] = (
     TuyaSensorEntityDescription(
         key=DPCode.BATTERY_STATE,
         translation_key="battery_state",
-        icon="mdi:battery",
+        icon=Icon.BATTERY,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     TuyaSensorEntityDescription(
@@ -88,7 +89,7 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
         TuyaSensorEntityDescription(
             key=DPCode.GAS_SENSOR_VALUE,
             translation_key="gas",
-            icon="mdi:gas-cylinder",
+            icon=Icon.GAS_CYLINDER,
             state_class=SensorStateClass.MEASUREMENT,
         ),
         TuyaSensorEntityDescription(
@@ -112,14 +113,14 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
         TuyaSensorEntityDescription(
             key=DPCode.CO_VALUE,
             translation_key="carbon_monoxide",
-            icon="mdi:molecule-co",
+            icon=Icon.MOLECULE_CO,
             device_class=SensorDeviceClass.CO,
             state_class=SensorStateClass.MEASUREMENT,
         ),
         TuyaSensorEntityDescription(
             key=DPCode.CO2_VALUE,
             translation_key="carbon_dioxide",
-            icon="mdi:molecule-co2",
+            icon=Icon.MOLECULE_CO2,
             device_class=SensorDeviceClass.CO2,
             state_class=SensorStateClass.MEASUREMENT,
         ),
@@ -131,12 +132,12 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
         TuyaSensorEntityDescription(
             key=DPCode.BRIGHT_STATE,
             translation_key="luminosity",
-            icon="mdi:brightness-6",
+            icon=Icon.BRIGHTNESS_6,
         ),
         TuyaSensorEntityDescription(
             key=DPCode.BRIGHT_VALUE,
             translation_key="illuminance",
-            icon="mdi:brightness-6",
+            icon=Icon.BRIGHTNESS_6,
             device_class=SensorDeviceClass.ILLUMINANCE,
             state_class=SensorStateClass.MEASUREMENT,
         ),
@@ -155,7 +156,7 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
         TuyaSensorEntityDescription(
             key=DPCode.SMOKE_SENSOR_VALUE,
             translation_key="smoke_amount",
-            icon="mdi:smoke-detector",
+            icon=Icon.SMOKE_DETECTOR,
             entity_category=EntityCategory.DIAGNOSTIC,
             state_class=SensorStateClass.MEASUREMENT,
         ),
@@ -238,7 +239,7 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
         TuyaSensorEntityDescription(
             key=DPCode.FEED_REPORT,
             translation_key="last_amount",
-            icon="mdi:counter",
+            icon=Icon.COUNTER,
             state_class=SensorStateClass.MEASUREMENT,
         ),
     ),
@@ -387,7 +388,7 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
         TuyaSensorEntityDescription(
             key=DPCode.BRIGHT_STATE,
             translation_key="luminosity",
-            icon="mdi:brightness-6",
+            icon=Icon.BRIGHTNESS_6,
         ),
         TuyaSensorEntityDescription(
             key=DPCode.BRIGHT_VALUE,
@@ -438,7 +439,7 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
             key=DPCode.REMAIN_TIME,
             translation_key="remaining_time",
             native_unit_of_measurement=UnitOfTime.MINUTES,
-            icon="mdi:timer",
+            icon=Icon.TIMER,
         ),
     ),
     # PIR Detector
@@ -512,7 +513,7 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
         TuyaSensorEntityDescription(
             key=DPCode.GAS_SENSOR_VALUE,
             name=None,
-            icon="mdi:gas-cylinder",
+            icon=Icon.GAS_CYLINDER,
             state_class=SensorStateClass.MEASUREMENT,
         ),
         *BATTERY_SENSORS,
@@ -646,7 +647,7 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
         TuyaSensorEntityDescription(
             key=DPCode.SMOKE_SENSOR_VALUE,
             translation_key="smoke_amount",
-            icon="mdi:smoke-detector",
+            icon=Icon.SMOKE_DETECTOR,
             entity_category=EntityCategory.DIAGNOSTIC,
             state_class=SensorStateClass.MEASUREMENT,
         ),
@@ -825,55 +826,55 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
         TuyaSensorEntityDescription(
             key=DPCode.CLEAN_AREA,
             translation_key="cleaning_area",
-            icon="mdi:texture-box",
+            icon=Icon.TEXTURE_BOX,
             state_class=SensorStateClass.MEASUREMENT,
         ),
         TuyaSensorEntityDescription(
             key=DPCode.CLEAN_TIME,
             translation_key="cleaning_time",
-            icon="mdi:progress-clock",
+            icon=Icon.PROGRESS_CLOCK,
             state_class=SensorStateClass.MEASUREMENT,
         ),
         TuyaSensorEntityDescription(
             key=DPCode.TOTAL_CLEAN_AREA,
             translation_key="total_cleaning_area",
-            icon="mdi:texture-box",
+            icon=Icon.TEXTURE_BOX,
             state_class=SensorStateClass.TOTAL_INCREASING,
         ),
         TuyaSensorEntityDescription(
             key=DPCode.TOTAL_CLEAN_TIME,
             translation_key="total_cleaning_time",
-            icon="mdi:history",
+            icon=Icon.HISTORY,
             state_class=SensorStateClass.TOTAL_INCREASING,
         ),
         TuyaSensorEntityDescription(
             key=DPCode.TOTAL_CLEAN_COUNT,
             translation_key="total_cleaning_times",
-            icon="mdi:counter",
+            icon=Icon.COUNTER,
             state_class=SensorStateClass.TOTAL_INCREASING,
         ),
         TuyaSensorEntityDescription(
             key=DPCode.DUSTER_CLOTH,
             translation_key="duster_cloth_life",
-            icon="mdi:ticket-percent-outline",
+            icon=Icon.TICKET_PERCENT_OUTLINE,
             state_class=SensorStateClass.MEASUREMENT,
         ),
         TuyaSensorEntityDescription(
             key=DPCode.EDGE_BRUSH,
             translation_key="side_brush_life",
-            icon="mdi:ticket-percent-outline",
+            icon=Icon.TICKET_PERCENT_OUTLINE,
             state_class=SensorStateClass.MEASUREMENT,
         ),
         TuyaSensorEntityDescription(
             key=DPCode.FILTER_LIFE,
             translation_key="filter_life",
-            icon="mdi:ticket-percent-outline",
+            icon=Icon.TICKET_PERCENT_OUTLINE,
             state_class=SensorStateClass.MEASUREMENT,
         ),
         TuyaSensorEntityDescription(
             key=DPCode.ROLL_BRUSH,
             translation_key="rolling_brush_life",
-            icon="mdi:ticket-percent-outline",
+            icon=Icon.TICKET_PERCENT_OUTLINE,
             state_class=SensorStateClass.MEASUREMENT,
         ),
     ),
@@ -884,7 +885,7 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
             key=DPCode.TIME_TOTAL,
             translation_key="last_operation_duration",
             entity_category=EntityCategory.DIAGNOSTIC,
-            icon="mdi:progress-clock",
+            icon=Icon.PROGRESS_CLOCK,
         ),
     ),
     # Humidifier
@@ -912,7 +913,7 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
             key=DPCode.LEVEL_CURRENT,
             translation_key="water_level",
             entity_category=EntityCategory.DIAGNOSTIC,
-            icon="mdi:waves-arrow-up",
+            icon=Icon.WAVES_ARROW_UP,
         ),
     ),
     # Air Purifier
@@ -922,14 +923,14 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
             key=DPCode.FILTER,
             translation_key="filter_utilization",
             entity_category=EntityCategory.DIAGNOSTIC,
-            icon="mdi:ticket-percent-outline",
+            icon=Icon.TICKET_PERCENT_OUTLINE,
         ),
         TuyaSensorEntityDescription(
             key=DPCode.PM25,
             translation_key="pm25",
             device_class=SensorDeviceClass.PM25,
             state_class=SensorStateClass.MEASUREMENT,
-            icon="mdi:molecule",
+            icon=Icon.MOLECULE,
         ),
         TuyaSensorEntityDescription(
             key=DPCode.TEMP,
@@ -958,21 +959,21 @@ SENSORS: dict[str, tuple[TuyaSensorEntityDescription, ...]] = {
         TuyaSensorEntityDescription(
             key=DPCode.TOTAL_TIME,
             translation_key="total_operating_time",
-            icon="mdi:history",
+            icon=Icon.HISTORY,
             state_class=SensorStateClass.TOTAL_INCREASING,
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
         TuyaSensorEntityDescription(
             key=DPCode.TOTAL_PM,
             translation_key="total_absorption_particles",
-            icon="mdi:texture-box",
+            icon=Icon.TEXTURE_BOX,
             state_class=SensorStateClass.TOTAL_INCREASING,
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
         TuyaSensorEntityDescription(
             key=DPCode.AIR_QUALITY,
             translation_key="air_quality",
-            icon="mdi:air-filter",
+            icon=Icon.AIR_FILTER,
         ),
     ),
     # Fan
@@ -1117,10 +1118,16 @@ class TuyaSensorEntity(TuyaEntity, SensorEntity):
         """Init Tuya sensor."""
         super().__init__(device, device_manager)
         self.entity_description = description
+
         self._attr_unique_id = (
             f"{super().unique_id}{description.key}{description.subkey or ''}"
         )
 
+        self.assign_type(description)
+
+        self.align_device_and_uom_with_requirements(description)
+
+    def assign_type(self, description: TuyaSensorEntityDescription):
         if int_type := self.find_dpcode(description.key, dptype=DPType.INTEGER):
             self._type_data = int_type
             self._type = DPType.INTEGER
@@ -1134,18 +1141,19 @@ class TuyaSensorEntity(TuyaEntity, SensorEntity):
         else:
             self._type = self.get_dptype(DPCode(description.key))
 
+    def align_device_and_uom_with_requirements(self, description: TuyaSensorEntityDescription):
         # Logic to ensure the set device class and API received Unit Of Measurement
         # match Home Assistants requirements.
         if (
-            self.device_class is not None
-            and not self.device_class.startswith(DOMAIN)
-            and description.native_unit_of_measurement is None
+                self.device_class is not None
+                and not self.device_class.startswith(DOMAIN)
+                and description.native_unit_of_measurement is None
         ):
             # We cannot have a device class, if the UOM isn't set or the
             # device class cannot be found in the validation mapping.
             if (
-                self.native_unit_of_measurement is None
-                or self.device_class not in DEVICE_CLASS_UNITS
+                    self.native_unit_of_measurement is None
+                    or self.device_class not in DEVICE_CLASS_UNITS
             ):
                 self._attr_device_class = None
                 return
@@ -1167,8 +1175,11 @@ class TuyaSensorEntity(TuyaEntity, SensorEntity):
             # Found unit of measurement, use the standardized Unit
             # Use the target conversion unit (if set)
             self._attr_native_unit_of_measurement = (
-                self._uom.conversion_unit or self._uom.unit
+                    self._uom.conversion_unit or self._uom.unit
             )
+
+
+
 
     @property
     def native_value(self) -> StateType:

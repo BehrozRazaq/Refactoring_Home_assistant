@@ -51,7 +51,7 @@ DEFAULT_COLOR_TYPE_DATA_V2 = ColorTypeData(
 
 @dataclass
 class TuyaLightEntityDescription(LightEntityDescription):
-    """Describe an Tuya light entity."""
+    """Describe a Tuya light entity."""
 
     brightness_max: DPCode | None = None
     brightness_min: DPCode | None = None
@@ -391,7 +391,7 @@ class ColorData:
 
 
 async def async_setup_entry(
-    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
+        hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     """Set up tuya light dynamically through tuya discovery."""
     hass_data: HomeAssistantTuyaData = hass.data[DOMAIN][entry.entry_id]
@@ -434,10 +434,10 @@ class TuyaLightEntity(TuyaEntity, LightEntity):
     _color_temp: IntegerTypeData | None = None
 
     def __init__(
-        self,
-        device: TuyaDevice,
-        device_manager: TuyaDeviceManager,
-        description: TuyaLightEntityDescription,
+            self,
+            device: TuyaDevice,
+            device_manager: TuyaDeviceManager,
+            description: TuyaLightEntityDescription,
     ) -> None:
         """Init TuyaHaLight."""
         super().__init__(device, device_manager)
@@ -451,7 +451,7 @@ class TuyaLightEntity(TuyaEntity, LightEntity):
         )
 
         if int_type := self.find_dpcode(
-            description.brightness, dptype=DPType.INTEGER, prefer_function=True
+                description.brightness, dptype=DPType.INTEGER, prefer_function=True
         ):
             self._brightness = int_type
             self._attr_supported_color_modes.add(ColorMode.BRIGHTNESS)
@@ -463,39 +463,41 @@ class TuyaLightEntity(TuyaEntity, LightEntity):
             )
 
         if int_type := self.find_dpcode(
-            description.color_temp, dptype=DPType.INTEGER, prefer_function=True
+                description.color_temp, dptype=DPType.INTEGER, prefer_function=True
         ):
             self._color_temp = int_type
             self._attr_supported_color_modes.add(ColorMode.COLOR_TEMP)
 
         if (
-            dpcode := self.find_dpcode(description.color_data, prefer_function=True)
+                dpcode := self.find_dpcode(description.color_data, prefer_function=True)
         ) and self.get_dptype(dpcode) == DPType.JSON:
-            self._color_data_dpcode = dpcode
-            self._attr_supported_color_modes.add(ColorMode.HS)
-            if dpcode in self.device.function:
-                values = cast(str, self.device.function[dpcode].values)
-            else:
-                values = self.device.status_range[dpcode].values
-
-            # Fetch color data type information
-            if function_data := json.loads(values):
-                self._color_data_type = ColorTypeData(
-                    h_type=IntegerTypeData(dpcode, **function_data["h"]),
-                    s_type=IntegerTypeData(dpcode, **function_data["s"]),
-                    v_type=IntegerTypeData(dpcode, **function_data["v"]),
-                )
-            else:
-                # If no type is found, use a default one
-                self._color_data_type = self.entity_description.default_color_type
-                if self._color_data_dpcode == DPCode.COLOUR_DATA_V2 or (
-                    self._brightness and self._brightness.max > 255
-                ):
-                    self._color_data_type = DEFAULT_COLOR_TYPE_DATA_V2
+            self.handle_color_data(dpcode)
 
         if not self._attr_supported_color_modes:
             self._attr_supported_color_modes = {ColorMode.ONOFF}
 
+    def handle_color_data(self, dpcode):
+        self._color_data_dpcode = dpcode
+        self._attr_supported_color_modes.add(ColorMode.HS)
+        if dpcode in self.device.function:
+            values = cast(str, self.device.function[dpcode].values)
+        else:
+            values = self.device.status_range[dpcode].values
+
+        # Fetch color data type information
+        if function_data := json.loads(values):
+            self._color_data_type = ColorTypeData(
+                h_type=IntegerTypeData(dpcode, **function_data["h"]),
+                s_type=IntegerTypeData(dpcode, **function_data["s"]),
+                v_type=IntegerTypeData(dpcode, **function_data["v"]),
+            )
+        else:
+            # If no type is found, use a default one
+            self._color_data_type = self.entity_description.default_color_type
+            if self._color_data_dpcode == DPCode.COLOUR_DATA_V2 or (
+                    self._brightness and self._brightness.max > 255
+            ):
+                self._color_data_type = DEFAULT_COLOR_TYPE_DATA_V2
     @property
     def is_on(self) -> bool:
         """Return true if light is on."""
@@ -529,12 +531,12 @@ class TuyaLightEntity(TuyaEntity, LightEntity):
             ]
 
         if self._color_data_type and (
-            ATTR_HS_COLOR in kwargs
-            or (
-                ATTR_BRIGHTNESS in kwargs
-                and self.color_mode == ColorMode.HS
-                and ATTR_COLOR_TEMP not in kwargs
-            )
+                ATTR_HS_COLOR in kwargs
+                or (
+                        ATTR_BRIGHTNESS in kwargs
+                        and self.color_mode == ColorMode.HS
+                        and ATTR_COLOR_TEMP not in kwargs
+                )
         ):
             if self._color_mode_dpcode:
                 commands += [
@@ -581,20 +583,20 @@ class TuyaLightEntity(TuyaEntity, LightEntity):
             # If there is a min/max value, the brightness is actually limited.
             # Meaning it is actually not on a 0-255 scale.
             if (
-                self._brightness_max is not None
-                and self._brightness_min is not None
-                and (
+                    self._brightness_max is not None
+                    and self._brightness_min is not None
+                    and (
                     brightness_max := self.device.status.get(
                         self._brightness_max.dpcode
                     )
-                )
-                is not None
-                and (
+            )
+                    is not None
+                    and (
                     brightness_min := self.device.status.get(
                         self._brightness_min.dpcode
                     )
-                )
-                is not None
+            )
+                    is not None
             ):
                 # Remap values onto our scale
                 brightness_max = self._brightness_max.remap_value_to(brightness_max)
@@ -640,12 +642,12 @@ class TuyaLightEntity(TuyaEntity, LightEntity):
         # If there is a min/max value, the brightness is actually limited.
         # Meaning it is actually not on a 0-255 scale.
         if (
-            self._brightness_max is not None
-            and self._brightness_min is not None
-            and (brightness_max := self.device.status.get(self._brightness_max.dpcode))
-            is not None
-            and (brightness_min := self.device.status.get(self._brightness_min.dpcode))
-            is not None
+                self._brightness_max is not None
+                and self._brightness_min is not None
+                and (brightness_max := self.device.status.get(self._brightness_max.dpcode))
+                is not None
+                and (brightness_min := self.device.status.get(self._brightness_min.dpcode))
+                is not None
         ):
             # Remap values onto our scale
             brightness_max = self._brightness_max.remap_value_to(brightness_max)
@@ -680,7 +682,7 @@ class TuyaLightEntity(TuyaEntity, LightEntity):
     def hs_color(self) -> tuple[float, float] | None:
         """Return the hs_color of the light."""
         if self._color_data_dpcode is None or not (
-            color_data := self._get_color_data()
+                color_data := self._get_color_data()
         ):
             return None
         return color_data.hs_color
@@ -691,8 +693,8 @@ class TuyaLightEntity(TuyaEntity, LightEntity):
         # We consider it to be in HS color mode, when work mode is anything
         # else than "white".
         if (
-            self._color_mode_dpcode
-            and self.device.status.get(self._color_mode_dpcode) != WorkMode.WHITE
+                self._color_mode_dpcode
+                and self.device.status.get(self._color_mode_dpcode) != WorkMode.WHITE
         ):
             return ColorMode.HS
         if self._color_temp:
@@ -704,9 +706,9 @@ class TuyaLightEntity(TuyaEntity, LightEntity):
     def _get_color_data(self) -> ColorData | None:
         """Get current color data from device."""
         if (
-            self._color_data_type is None
-            or self._color_data_dpcode is None
-            or self._color_data_dpcode not in self.device.status
+                self._color_data_type is None
+                or self._color_data_dpcode is None
+                or self._color_data_dpcode not in self.device.status
         ):
             return None
 
