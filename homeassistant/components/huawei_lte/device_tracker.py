@@ -64,30 +64,7 @@ async def async_setup_entry(
     if (hosts := _get_hosts(router, True)) is None:
         return
 
-    # Initialize already tracked entities
-    tracked: set[str] = set()
-    registry = er.async_get(hass)
-    known_entities: list[Entity] = []
-    track_wired_clients = router.config_entry.options.get(
-        CONF_TRACK_WIRED_CLIENTS, DEFAULT_TRACK_WIRED_CLIENTS
-    )
-    for entity in registry.entities.values():
-        if (
-            entity.domain == DEVICE_TRACKER_DOMAIN
-            and entity.config_entry_id == config_entry.entry_id
-        ):
-            mac = entity.unique_id.partition("-")[2]
-            # Do not add known wired clients if not tracking them (any more)
-            skip = False
-            if not track_wired_clients:
-                for host in hosts:
-                    if host.get("MacAddress") == mac:
-                        skip = not _is_wireless(host)
-                        break
-            if not skip:
-                tracked.add(entity.unique_id)
-                known_entities.append(HuaweiLteScannerEntity(router, mac))
-    async_add_entities(known_entities, True)
+    tracked = _initialize_tracked_entities(hass, config_entry, async_add_entities, router, hosts)
 
     # Tell parent router to poll hosts list to gather new devices
     router.subscriptions[KEY_LAN_HOST_INFO].append(_DEVICE_SCAN)
@@ -106,6 +83,45 @@ async def async_setup_entry(
 
     # Add new entities from initial scan
     async_add_new_entities(router, async_add_entities, tracked)
+
+
+def _initialize_tracked_entities(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+    router: RouterType,
+    hosts: List[HostType],
+) -> Set[str]:
+    tracked = set()
+    registry = er.async_get(hass)
+    known_entities = []
+    track_wired_clients = router.config_entry.options.get(
+        CONF_TRACK_WIRED_CLIENTS, DEFAULT_TRACK_WIRED_CLIENTS
+    )
+
+    for entity in registry.entities.values():
+        if (
+            entity.domain == DEVICE_TRACKER_DOMAIN
+            and entity.config_entry_id == config_entry.entry_id
+        ):
+            mac = entity.unique_id.partition("-")[2]
+            skip = _should_skip_entity(track_wired_clients, mac, hosts)
+            if not skip:
+                tracked.add(entity.unique_id)
+                known_entities.append(HuaweiLteScannerEntity(router, mac))
+
+    async_add_entities(known_entities, True)
+    return tracked
+
+
+def _should_skip_entity(
+    track_wired_clients: bool, mac: str, hosts: List[HostType]
+) -> bool:
+    if not track_wired_clients:
+        for host in hosts:
+            if host.get("MacAddress") == mac:
+                return not _is_wireless(host)
+    return False
 
 
 def _is_wireless(host: _HostType) -> bool:

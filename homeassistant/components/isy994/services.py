@@ -121,12 +121,27 @@ SERVICE_SEND_PROGRAM_COMMAND_SCHEMA = vol.All(
 
 
 @callback
-def async_setup_services(hass: HomeAssistant) -> None:  # noqa: C901
+def async_setup_services(hass: HomeAssistant) -> None: # noqa: C901
     """Create and register services for the ISY integration."""
     existing_services = hass.services.async_services().get(DOMAIN)
     if existing_services and SERVICE_SEND_PROGRAM_COMMAND in existing_services:
         # Integration-level services have already been added. Return.
         return
+
+    async def register_entity_service(
+        hass: HomeAssistant, service_func_name: str, service_name: str, schema: dict
+    ) -> None:
+        async def async_entity_service_handler(call: ServiceCall) -> None:
+            await entity_service_call(
+                hass, async_get_platforms(hass, DOMAIN), service_func_name, call
+            )
+
+        hass.services.async_register(
+            domain=DOMAIN,
+            service=service_name,
+            schema=cv.make_entity_service_schema(schema),
+            service_func=async_entity_service_handler,
+        )
 
     async def async_send_program_command_service_handler(service: ServiceCall) -> None:
         """Handle a send program command service call."""
@@ -148,8 +163,10 @@ def async_setup_services(hass: HomeAssistant) -> None:  # noqa: C901
             if program is not None:
                 await getattr(program, command)()
                 return
+
         _LOGGER.error("Could not send program command; not found or enabled on the ISY")
 
+    # Register send program command service
     hass.services.async_register(
         domain=DOMAIN,
         service=SERVICE_SEND_PROGRAM_COMMAND,
@@ -157,64 +174,33 @@ def async_setup_services(hass: HomeAssistant) -> None:  # noqa: C901
         schema=SERVICE_SEND_PROGRAM_COMMAND_SCHEMA,
     )
 
-    async def _async_send_raw_node_command(call: ServiceCall) -> None:
-        await entity_service_call(
-            hass, async_get_platforms(hass, DOMAIN), "async_send_raw_node_command", call
-        )
-
-    hass.services.async_register(
-        domain=DOMAIN,
-        service=SERVICE_SEND_RAW_NODE_COMMAND,
-        schema=cv.make_entity_service_schema(SERVICE_SEND_RAW_NODE_COMMAND_SCHEMA),
-        service_func=_async_send_raw_node_command,
+    # Register other services
+    await register_entity_service(
+        hass,
+        "async_send_raw_node_command",
+        SERVICE_SEND_RAW_NODE_COMMAND,
+        SERVICE_SEND_RAW_NODE_COMMAND_SCHEMA,
     )
-
-    async def _async_send_node_command(call: ServiceCall) -> None:
-        await entity_service_call(
-            hass, async_get_platforms(hass, DOMAIN), "async_send_node_command", call
-        )
-
-    hass.services.async_register(
-        domain=DOMAIN,
-        service=SERVICE_SEND_NODE_COMMAND,
-        schema=cv.make_entity_service_schema(SERVICE_SEND_NODE_COMMAND_SCHEMA),
-        service_func=_async_send_node_command,
+    await register_entity_service(
+        hass,
+        "async_send_node_command",
+        SERVICE_SEND_NODE_COMMAND,
+        SERVICE_SEND_NODE_COMMAND_SCHEMA,
     )
-
-    async def _async_get_zwave_parameter(call: ServiceCall) -> None:
-        await entity_service_call(
-            hass, async_get_platforms(hass, DOMAIN), "async_get_zwave_parameter", call
-        )
-
-    hass.services.async_register(
-        domain=DOMAIN,
-        service=SERVICE_GET_ZWAVE_PARAMETER,
-        schema=cv.make_entity_service_schema(SERVICE_GET_ZWAVE_PARAMETER_SCHEMA),
-        service_func=_async_get_zwave_parameter,
+    await register_entity_service(
+        hass,
+        "async_get_zwave_parameter",
+        SERVICE_GET_ZWAVE_PARAMETER,
+        SERVICE_GET_ZWAVE_PARAMETER_SCHEMA,
     )
-
-    async def _async_set_zwave_parameter(call: ServiceCall) -> None:
-        await entity_service_call(
-            hass, async_get_platforms(hass, DOMAIN), "async_set_zwave_parameter", call
-        )
-
-    hass.services.async_register(
-        domain=DOMAIN,
-        service=SERVICE_SET_ZWAVE_PARAMETER,
-        schema=cv.make_entity_service_schema(SERVICE_SET_ZWAVE_PARAMETER_SCHEMA),
-        service_func=_async_set_zwave_parameter,
+    await register_entity_service(
+        hass,
+        "async_set_zwave_parameter",
+        SERVICE_SET_ZWAVE_PARAMETER,
+        SERVICE_SET_ZWAVE_PARAMETER_SCHEMA,
     )
-
-    async def _async_rename_node(call: ServiceCall) -> None:
-        await entity_service_call(
-            hass, async_get_platforms(hass, DOMAIN), "async_rename_node", call
-        )
-
-    hass.services.async_register(
-        domain=DOMAIN,
-        service=SERVICE_RENAME_NODE,
-        schema=cv.make_entity_service_schema(SERVICE_RENAME_NODE_SCHEMA),
-        service_func=_async_rename_node,
+    await register_entity_service(
+        hass, "async_rename_node", SERVICE_RENAME_NODE, SERVICE_RENAME_NODE_SCHEMA
     )
 
 

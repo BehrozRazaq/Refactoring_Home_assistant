@@ -113,41 +113,47 @@ def _check_for_insteon_type(
             # on ISY 5.x firmware as it uses the superior NodeDefs method
             subnode_id = int(node.address.split(" ")[-1], 16)
 
-            # FanLinc, which has a light module as one of its nodes.
-            if platform == Platform.FAN and subnode_id == SUBNODE_FANLINC_LIGHT:
-                isy_data.nodes[Platform.LIGHT].append(node)
-                return True
-
-            # Thermostats, which has a "Heat" and "Cool" sub-node on address 2 and 3
-            if platform == Platform.CLIMATE and subnode_id in (
-                SUBNODE_CLIMATE_COOL,
-                SUBNODE_CLIMATE_HEAT,
-            ):
-                isy_data.nodes[Platform.BINARY_SENSOR].append(node)
-                return True
-
-            # IOLincs which have a sensor and relay on 2 different nodes
-            if (
-                platform == Platform.BINARY_SENSOR
-                and device_type.startswith(TYPE_CATEGORY_SENSOR_ACTUATORS)
-                and subnode_id == SUBNODE_IOLINC_RELAY
-            ):
-                isy_data.nodes[Platform.SWITCH].append(node)
-                return True
-
-            # Smartenit EZIO2X4
-            if (
-                platform == Platform.SWITCH
-                and device_type.startswith(TYPE_EZIO2X4)
-                and subnode_id in SUBNODE_EZIO2X4_SENSORS
-            ):
-                isy_data.nodes[Platform.BINARY_SENSOR].append(node)
-                return True
-
-            isy_data.nodes[platform].append(node)
+            check_node_type(isy_data, device_type, platform, subnode_id, node)
             return True
 
     return False
+
+
+def _check_node_type(
+    isy_data: IsyData,
+    device_type: str,
+    platform: Platform,
+    subnode_id: int,
+    node: Group | Node,
+) -> None:
+    # FanLinc, which has a light module as one of its nodes.
+    if platform == Platform.FAN and subnode_id == SUBNODE_FANLINC_LIGHT:
+        isy_data.nodes[Platform.LIGHT].append(node)
+
+    # Thermostats, which has a "Heat" and "Cool" sub-node on address 2 and 3
+    if platform == Platform.CLIMATE and subnode_id in (
+        SUBNODE_CLIMATE_COOL,
+        SUBNODE_CLIMATE_HEAT,
+    ):
+        isy_data.nodes[Platform.BINARY_SENSOR].append(node)
+
+    # IOLincs which have a sensor and relay on 2 different nodes
+    if (
+        platform == Platform.BINARY_SENSOR
+        and device_type.startswith(TYPE_CATEGORY_SENSOR_ACTUATORS)
+        and subnode_id == SUBNODE_IOLINC_RELAY
+    ):
+        isy_data.nodes[Platform.SWITCH].append(node)
+
+    # Smartenit EZIO2X4
+    if (
+        platform == Platform.SWITCH
+        and device_type.startswith(TYPE_EZIO2X4)
+        and subnode_id in SUBNODE_EZIO2X4_SENSORS
+    ):
+        isy_data.nodes[Platform.BINARY_SENSOR].append(node)
+
+    isy_data.nodes[platform].append(node)
 
 
 def _check_for_zwave_cat(
@@ -340,19 +346,7 @@ def _categorize_nodes(
 
         if hasattr(node, "parent_node") and node.parent_node is None:
             # This is a physical device / parent node
-            isy_data.devices[node.address] = _generate_device_info(node)
-            isy_data.root_nodes[Platform.BUTTON].append(node)
-            # Any parent node can have communication errors:
-            isy_data.aux_properties[Platform.SENSOR].append((node, PROP_COMMS_ERROR))
-            # Add Ramp Rate and On Levels for Dimmable Load devices
-            if getattr(node, "is_dimmable", False):
-                aux_controls = ROOT_AUX_CONTROLS.intersection(node.aux_properties)
-                for control in aux_controls:
-                    platform = NODE_AUX_FILTERS[control]
-                    isy_data.aux_properties[platform].append((node, control))
-            if hasattr(node, TAG_ENABLED):
-                isy_data.aux_properties[Platform.SWITCH].append((node, TAG_ENABLED))
-            _add_backlight_if_supported(isy_data, node)
+            _categorize_parent(isy_data, node)
 
         if node.protocol == PROTO_GROUP:
             isy_data.nodes[ISY_GROUP_PLATFORM].append(node)
@@ -390,6 +384,22 @@ def _categorize_nodes(
         isy_data.nodes[Platform.SENSOR].append(node)
 
 
+def _categorize_parent(isy_data: IsyData, node: Node) -> None:
+    isy_data.devices[node.address] = _generate_device_info(node)
+    isy_data.root_nodes[Platform.BUTTON].append(node)
+    # Any parent node can have communication errors:
+    isy_data.aux_properties[Platform.SENSOR].append((node, PROP_COMMS_ERROR))
+    # Add Ramp Rate and On Levels for Dimmable Load devices
+    if getattr(node, "is_dimmable", False):
+        aux_controls = ROOT_AUX_CONTROLS.intersection(node.aux_properties)
+        for control in aux_controls:
+            platform = NODE_AUX_FILTERS[control]
+            isy_data.aux_properties[platform].append((node, control))
+    if hasattr(node, TAG_ENABLED):
+        isy_data.aux_properties[Platform.SWITCH].append((node, TAG_ENABLED))
+    _add_backlight_if_supported(isy_data, node)
+
+
 def _categorize_programs(isy_data: IsyData, programs: Programs) -> None:
     """Categorize the ISY programs."""
     for platform in PROGRAM_PLATFORMS:
@@ -401,32 +411,37 @@ def _categorize_programs(isy_data: IsyData, programs: Programs) -> None:
             if dtype != TAG_FOLDER:
                 continue
             entity_folder = folder[node_id]
+            _process_program_entity(isy_data, entity_folder, platform)
 
-            actions = None
-            status = entity_folder.get_by_name(KEY_STATUS)
-            if not status or status.protocol != PROTO_PROGRAM:
-                _LOGGER.warning(
-                    "Program %s entity '%s' not loaded, invalid/missing status program",
-                    platform,
-                    entity_folder.name,
-                )
-                continue
 
-            if platform != Platform.BINARY_SENSOR:
-                actions = entity_folder.get_by_name(KEY_ACTIONS)
-                if not actions or actions.protocol != PROTO_PROGRAM:
-                    _LOGGER.warning(
-                        (
-                            "Program %s entity '%s' not loaded, invalid/missing actions"
-                            " program"
-                        ),
-                        platform,
-                        entity_folder.name,
-                    )
-                    continue
+def _process_program_entity(
+    isy_data: IsyData,
+    entity_folder: ProgramNode,
+    platform: Platform,
+) -> None:
+    actions = None
+    status = entity_folder.get_by_name(KEY_STATUS)
 
-            entity = (entity_folder.name, status, actions)
-            isy_data.programs[platform].append(entity)
+    if not status or status.protocol != PROTO_PROGRAM:
+        _handle_invalid_program(platform, entity_folder.name)
+        return
+
+    if platform != Platform.BINARY_SENSOR:
+        actions = entity_folder.get_by_name(KEY_ACTIONS)
+        if not actions or actions.protocol != PROTO_PROGRAM:
+            _handle_invalid_program(platform, entity_folder.name)
+            return
+
+    entity = (entity_folder.name, status, actions)
+    isy_data.programs[platform].append(entity)
+
+
+def _handle_invalid_program(platform: Platform, entity_name: str) -> None:
+    _LOGGER.warning(
+        "Program %s entity '%s' not loaded, invalid/missing program",
+        platform,
+        entity_name,
+    )
 
 
 def convert_isy_value_to_hass(
