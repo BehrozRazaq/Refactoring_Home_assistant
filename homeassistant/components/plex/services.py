@@ -151,11 +151,11 @@ def _handle_playqueue_media(
 
 def _handle_content_as_media_or_playqueue(
     content_type: str,
-    search_query: "dict[str, int] | typing.Any",
+    search_query: dict[str, int] | typing.Any,
     supports_playqueues: bool,
-    shuffle: "int | typing.Any",
+    shuffle: int | typing.Any,
     plex_server: PlexServer | None,
-    content: "dict[str, int] | typing.Any",
+    content: dict[str, int] | typing.Any,
 ):
     media = plex_server.lookup_media(content_type, **search_query)
     if supports_playqueues and (isinstance(media, list) or shuffle):
