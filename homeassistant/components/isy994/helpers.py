@@ -113,7 +113,7 @@ def _check_for_insteon_type(
             # on ISY 5.x firmware as it uses the superior NodeDefs method
             subnode_id = int(node.address.split(" ")[-1], 16)
 
-            return _check_node_type(isy_data, device_type, platform, subnode_id, node)
+            check_node_type(isy_data, device_type, platform, subnode_id, node)
             return True
 
     return False
