@@ -226,6 +226,3 @@ def process_plex_payload(
     return _handle_content_as_media_or_playqueue(
         content_type, search_query, supports_playqueues, shuffle, plex_server, content
     )
-
-
-###############################################################################################
