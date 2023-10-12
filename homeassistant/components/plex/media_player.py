@@ -192,6 +192,12 @@ class PlexMediaPlayer(MediaPlayerEntity):
             PLEX_UPDATE_SENSOR_SIGNAL.format(self.plex_server.machine_identifier),
         )
 
+    def get_device_url(self):
+        try:
+            return self.device.url("/")
+        except plexapi.exceptions.BadRequest:
+            return "127.0.0.1"
+
     def update(self):
         """Refresh key device data."""
         if not self.session:
@@ -201,10 +207,8 @@ class PlexMediaPlayer(MediaPlayerEntity):
                 return
 
         self._attr_available = True
-
-        try:
-            self.device.url("/")
-        except plexapi.exceptions.BadRequest:
+        device_url = self.get_device_url()
+        if "127.0.0.1" in device_url:
             self.device.proxyThroughServer()
         self._device_protocol_capabilities = self.device.protocolCapabilities
 
