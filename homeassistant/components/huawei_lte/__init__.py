@@ -537,9 +537,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             _LOGGER.error("%s: router %s unavailable", service.service, url)
             return
 
-        if router.suspended:
-            _LOGGER.debug("%s: ignored, integration suspended", service.service)
-            return
+        if service.service in [SERVICE_CLEAR_TRAFFIC_STATISTICS, SERVICE_REBOOT]:
+            if router.suspended:
+                _LOGGER.debug("%s: ignored, integration suspended", service.service)
+                return
 
         result = async_provide_results(service, router)
 
