@@ -103,7 +103,6 @@ NOTIFY_SCHEMA = vol.Any(
         }
     ),
 )
-# Test comment
 
 CONFIG_SCHEMA = vol.Schema(
     {
@@ -523,6 +522,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             router = next((r for r in routers.values() if r.url == url), None)
         elif not routers:
             _LOGGER.error("%s: no routers configured", service.service)
+            return
         elif len(routers) == 1:
             router = next(iter(routers.values()))
         else:
@@ -531,6 +531,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 service.service,
                 sorted(r.url for r in routers.values()),
             )
+            return
 
         if not router:
             _LOGGER.error("%s: router %s unavailable", service.service, url)
