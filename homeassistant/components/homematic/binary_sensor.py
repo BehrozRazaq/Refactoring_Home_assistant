@@ -35,8 +35,8 @@ SENSOR_TYPES_CLASS = {
 
 
 def setup_platform(
-    hass: HomeAssistant,
-    config: ConfigType,
+    _hass: HomeAssistant,
+    _config: ConfigType,
     add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
