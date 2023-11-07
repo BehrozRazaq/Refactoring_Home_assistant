@@ -20,11 +20,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from .CarIdentifier import DummyAI
+from .CarIdentifier import CarRectangle
 
 from .const import CONF_LOCATION, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
-TIME_BETWEEN_UPDATES = timedelta(minutes=5)
+TIME_BETWEEN_UPDATES = timedelta(minutes=5)  # TODO HOLDUP can we just not?
 
 
 @dataclass
@@ -33,6 +35,8 @@ class CameraData:
 
     data: CameraInfo
     image: bytes | None
+    car_list: list[CarRectangle]
+    # TODO maybe add traffic measure or nr_cars? ask frontend
 
 
 class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
@@ -49,28 +53,35 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
         self.session = async_get_clientsession(hass)
         self._camera_api = TrafikverketCamera(self.session, entry.data[CONF_API_KEY])
         self._location = entry.data[CONF_LOCATION]
+        self._AI = DummyAI()  # TODO change once new AI drops
 
     async def _async_update_data(self) -> CameraData:
         """Fetch data from Trafikverket."""
-        camera_data: CameraInfo
+        camera_info: CameraInfo
         image: bytes | None = None
+        car_list = []
         try:
-            camera_data = await self._camera_api.async_get_camera(self._location)
+            camera_info = await self._camera_api.async_get_camera(self._location)
         except (NoCameraFound, MultipleCamerasFound, UnknownError) as error:
             raise UpdateFailed from error
         except InvalidAuthentication as error:
             raise ConfigEntryAuthFailed from error
 
-        if camera_data.photourl is None:
-            return CameraData(data=camera_data, image=None)
+        if camera_info.photourl is None:
+            return CameraData(data=camera_info, image=None, car_list=car_list)
 
-        image_url = camera_data.photourl
-        if camera_data.fullsizephoto:
-            image_url = f"{camera_data.photourl}?type=fullsize"
+        image_url = camera_info.photourl
+        if camera_info.fullsizephoto:
+            image_url = f"{camera_info.photourl}?type=fullsize"
 
         async with self.session.get(image_url, timeout=10) as get_image:
             if get_image.status not in range(200, 299):
                 raise UpdateFailed("Could not retrieve image")
             image = BytesIO(await get_image.read()).getvalue()
+            car_list = self.process_image(camera_info, image)
 
-        return CameraData(data=camera_data, image=image)
+        return CameraData(data=camera_info, image=image, car_list=car_list)
+
+    def process_image(self, camera_info, image: bytes | None) -> list[CarRectangle]:
+        # Todo save statistics in database (camera_data, nr_cars)
+        return self._AI.get_cars(image)
