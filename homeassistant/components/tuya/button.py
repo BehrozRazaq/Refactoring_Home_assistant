@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import HomeAssistantTuyaData
 from .base import TuyaEntity
-from .const import DOMAIN, TUYA_DISCOVERY_NEW, DPCode
+from .const import DOMAIN, TUYA_DISCOVERY_NEW, DPCode, Icon
 
 # All descriptions can be found here.
 # https://developer.tuya.com/en/docs/iot/standarddescription?id=K9i5ql6waswzq
@@ -23,31 +23,31 @@ BUTTONS: dict[str, tuple[ButtonEntityDescription, ...]] = {
         ButtonEntityDescription(
             key=DPCode.RESET_DUSTER_CLOTH,
             translation_key="reset_duster_cloth",
-            icon="mdi:restart",
+            icon=Icon.RESTART,
             entity_category=EntityCategory.CONFIG,
         ),
         ButtonEntityDescription(
             key=DPCode.RESET_EDGE_BRUSH,
             translation_key="reset_edge_brush",
-            icon="mdi:restart",
+            icon=Icon.RESTART,
             entity_category=EntityCategory.CONFIG,
         ),
         ButtonEntityDescription(
             key=DPCode.RESET_FILTER,
             translation_key="reset_filter",
-            icon="mdi:air-filter",
+            icon=Icon.AIR_FILTER,
             entity_category=EntityCategory.CONFIG,
         ),
         ButtonEntityDescription(
             key=DPCode.RESET_MAP,
             translation_key="reset_map",
-            icon="mdi:map-marker-remove",
+            icon=Icon.MAP_MARKER_REMOVE,
             entity_category=EntityCategory.CONFIG,
         ),
         ButtonEntityDescription(
             key=DPCode.RESET_ROLL_BRUSH,
             translation_key="reset_roll_brush",
-            icon="mdi:restart",
+            icon=Icon.RESTART,
             entity_category=EntityCategory.CONFIG,
         ),
     ),
@@ -57,7 +57,7 @@ BUTTONS: dict[str, tuple[ButtonEntityDescription, ...]] = {
         ButtonEntityDescription(
             key=DPCode.SWITCH_USB6,
             translation_key="snooze",
-            icon="mdi:sleep",
+            icon=Icon.SLEEP,
         ),
     ),
 }

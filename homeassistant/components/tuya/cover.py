@@ -194,7 +194,11 @@ class TuyaCoverEntity(TuyaEntity, CoverEntity):
         self._attr_unique_id = f"{super().unique_id}{description.key}"
         self._attr_supported_features = CoverEntityFeature(0)
 
-        # Check if this cover is based on a switch or has controls
+        self.determine_cover_features(device, description)
+        self.determine_types_for_cover_position_and_tilt(description)
+
+    # Checks if this cover is based on a switch or has controls
+    def determine_cover_features(self, device: TuyaDevice, description: TuyaCoverEntityDescription):
         if self.find_dpcode(description.key, prefer_function=True):
             if device.function[description.key].type == "Boolean":
                 self._attr_supported_features |= (
@@ -210,6 +214,8 @@ class TuyaCoverEntity(TuyaEntity, CoverEntity):
                 if description.stop_instruction_value in enum_type.range:
                     self._attr_supported_features |= CoverEntityFeature.STOP
 
+    # Determines which types should be used for setting cover position and tilt
+    def determine_types_for_cover_position_and_tilt(self, description: TuyaCoverEntityDescription):
         # Determine type to use for setting the position
         if int_type := self.find_dpcode(
             description.set_position, dptype=DPType.INTEGER, prefer_function=True

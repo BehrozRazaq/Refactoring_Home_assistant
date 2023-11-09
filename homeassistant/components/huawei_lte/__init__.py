@@ -184,6 +184,43 @@ class Router:
             (dr.CONNECTION_NETWORK_MAC, x) for x in self.config_entry.data[CONF_MAC]
         }
 
+    def _handle_login_required_exception(self, key: str) -> None:
+        if not self.config_entry.options.get(CONF_UNAUTHENTICATED_MODE):
+            _LOGGER.debug("Trying to authorize again")
+            if self.client.user.login(
+                self.config_entry.data.get(CONF_USERNAME, ""),
+                self.config_entry.data.get(CONF_PASSWORD, ""),
+            ):
+                _LOGGER.debug(
+                    "success, %s will be updated by a future periodic run",
+                    key,
+                )
+            else:
+                _LOGGER.debug("failed")
+            return
+        _LOGGER.info("%s requires authorization, excluding from future updates", key)
+        self.subscriptions.pop(key)
+
+    def _handle_unsupported_exception(self, key: str, exc: Exception) -> None:
+        if not isinstance(exc, (ResponseErrorNotSupportedException, ExpatError)):
+            raise exc  # Raise the exception here
+        _LOGGER.info(
+            "%s apparently not supported by the device, excluding from future updates",
+            key,
+        )
+        self.subscriptions.pop(key)
+
+    def _handle_timeout_exception(self, key: str, grace_left: float) -> None:
+        if grace_left > 0:
+            _LOGGER.debug(
+                "%s timed out, %.1fs notify timeout suppress grace remaining",
+                key,
+                grace_left,
+                exc_info=True,
+            )
+        else:
+            raise Timeout(f"Timeout occurred for {key}")
+
     def _get_data(self, key: str, func: Callable[[], Any]) -> None:
         if not self.subscriptions.get(key):
             return
@@ -195,49 +232,14 @@ class Router:
         try:
             self.data[key] = func()
         except ResponseErrorLoginRequiredException:
-            if not self.config_entry.options.get(CONF_UNAUTHENTICATED_MODE):
-                _LOGGER.debug("Trying to authorize again")
-                if self.client.user.login(
-                    self.config_entry.data.get(CONF_USERNAME, ""),
-                    self.config_entry.data.get(CONF_PASSWORD, ""),
-                ):
-                    _LOGGER.debug(
-                        "success, %s will be updated by a future periodic run",
-                        key,
-                    )
-                else:
-                    _LOGGER.debug("failed")
-                return
-            _LOGGER.info(
-                "%s requires authorization, excluding from future updates", key
-            )
-            self.subscriptions.pop(key)
+            self._handle_login_required_exception(key)
         except (ResponseErrorException, ExpatError) as exc:
-            # Take ResponseErrorNotSupportedException, ExpatError, and generic
-            # ResponseErrorException with a few select codes to mean the endpoint is
-            # not supported.
-            if not isinstance(
-                exc, (ResponseErrorNotSupportedException, ExpatError)
-            ) and exc.code not in (-1, 100006):
-                raise
-            _LOGGER.info(
-                "%s apparently not supported by device, excluding from future updates",
-                key,
-            )
-            self.subscriptions.pop(key)
+            self._handle_unsupported_exception(key, exc)
         except Timeout:
             grace_left = (
                 self.notify_last_attempt - time.monotonic() + NOTIFY_SUPPRESS_TIMEOUT
             )
-            if grace_left > 0:
-                _LOGGER.debug(
-                    "%s timed out, %.1fs notify timeout suppress grace remaining",
-                    key,
-                    grace_left,
-                    exc_info=True,
-                )
-            else:
-                raise
+            self._handle_timeout_exception(key, grace_left)
         finally:
             self.inflight_gets.discard(key)
             _LOGGER.debug("%s=%s", key, self.data.get(key))
@@ -325,6 +327,75 @@ class HuaweiLteData(NamedTuple):
     routers: dict[str, Router]
 
 
+async def async_setup_unique_entries(
+    router_info: Any, hass: HomeAssistant, entry: ConfigEntry, router: Router, url: Any
+) -> Any:
+    """Set up unique entries."""
+    if not entry.unique_id:
+        # Transitional from < 2021.8: update None config entry and entity unique ids
+        if router_info and (serial_number := router_info.get("SerialNumber")):
+            hass.config_entries.async_update_entry(entry, unique_id=serial_number)
+            ent_reg = er.async_get(hass)
+            for entity_entry in er.async_entries_for_config_entry(
+                ent_reg, entry.entry_id
+            ):
+                if not entity_entry.unique_id.startswith("None-"):
+                    continue
+                new_unique_id = entity_entry.unique_id.removeprefix("None-")
+                new_unique_id = f"{serial_number}-{new_unique_id}"
+                ent_reg.async_update_entity(
+                    entity_entry.entity_id, new_unique_id=new_unique_id
+                )
+        else:
+            await hass.async_add_executor_job(router.cleanup)
+            msg = (
+                "Could not resolve serial number to use as unique id for router at %s"
+                ", setup failed"
+            )
+            if not entry.data.get(CONF_PASSWORD):
+                msg += (
+                    ". Try setting up credentials for the router for one startup, "
+                    "unauthenticated mode can be enabled after that in integration "
+                    "settings"
+                )
+            _LOGGER.error(msg, url)
+            return False
+
+
+async def async_setup_device_entry(
+    router: Router, entry: ConfigEntry, router_info: Any, hass: HomeAssistant
+) -> Any:
+    """Set up device entry."""
+    if router.device_identifiers or router.device_connections:
+        device_info = DeviceInfo(
+            configuration_url=router.url,
+            connections=router.device_connections,
+            identifiers=router.device_identifiers,
+            manufacturer=entry.data.get(CONF_MANUFACTURER, DEFAULT_MANUFACTURER),
+            name=router.device_name,
+        )
+        hw_version = None
+        sw_version = None
+        if router_info:
+            hw_version = router_info.get("HardwareVersion")
+            sw_version = router_info.get("SoftwareVersion")
+            if router_info.get("DeviceName"):
+                device_info[ATTR_MODEL] = router_info["DeviceName"]
+        if not sw_version and router.data.get(KEY_DEVICE_BASIC_INFORMATION):
+            sw_version = router.data[KEY_DEVICE_BASIC_INFORMATION].get(
+                "SoftwareVersion"
+            )
+        if hw_version:
+            device_info[ATTR_HW_VERSION] = hw_version
+        if sw_version:
+            device_info[ATTR_SW_VERSION] = sw_version
+        device_registry = dr.async_get(hass)
+        device_registry.async_get_or_create(
+            config_entry_id=entry.entry_id,
+            **device_info,
+        )
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Huawei LTE component from config entry."""
     url = entry.data[CONF_URL]
@@ -358,35 +429,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     # Check that we found required information
     router_info = router.data.get(KEY_DEVICE_INFORMATION)
-    if not entry.unique_id:
-        # Transitional from < 2021.8: update None config entry and entity unique ids
-        if router_info and (serial_number := router_info.get("SerialNumber")):
-            hass.config_entries.async_update_entry(entry, unique_id=serial_number)
-            ent_reg = er.async_get(hass)
-            for entity_entry in er.async_entries_for_config_entry(
-                ent_reg, entry.entry_id
-            ):
-                if not entity_entry.unique_id.startswith("None-"):
-                    continue
-                new_unique_id = entity_entry.unique_id.removeprefix("None-")
-                new_unique_id = f"{serial_number}-{new_unique_id}"
-                ent_reg.async_update_entity(
-                    entity_entry.entity_id, new_unique_id=new_unique_id
-                )
-        else:
-            await hass.async_add_executor_job(router.cleanup)
-            msg = (
-                "Could not resolve serial number to use as unique id for router at %s"
-                ", setup failed"
-            )
-            if not entry.data.get(CONF_PASSWORD):
-                msg += (
-                    ". Try setting up credentials for the router for one startup, "
-                    "unauthenticated mode can be enabled after that in integration "
-                    "settings"
-                )
-            _LOGGER.error(msg, url)
-            return False
+
+    await async_setup_unique_entries(router_info, hass, entry, router, url)
 
     # Store reference to router
     hass.data[DOMAIN].routers[entry.entry_id] = router
@@ -412,34 +456,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.config_entries.async_update_entry(entry, data=new_data)
 
     # Set up device registry
-    if router.device_identifiers or router.device_connections:
-        device_info = DeviceInfo(
-            configuration_url=router.url,
-            connections=router.device_connections,
-            identifiers=router.device_identifiers,
-            manufacturer=entry.data.get(CONF_MANUFACTURER, DEFAULT_MANUFACTURER),
-            name=router.device_name,
-        )
-        hw_version = None
-        sw_version = None
-        if router_info:
-            hw_version = router_info.get("HardwareVersion")
-            sw_version = router_info.get("SoftwareVersion")
-            if router_info.get("DeviceName"):
-                device_info[ATTR_MODEL] = router_info["DeviceName"]
-        if not sw_version and router.data.get(KEY_DEVICE_BASIC_INFORMATION):
-            sw_version = router.data[KEY_DEVICE_BASIC_INFORMATION].get(
-                "SoftwareVersion"
-            )
-        if hw_version:
-            device_info[ATTR_HW_VERSION] = hw_version
-        if sw_version:
-            device_info[ATTR_SW_VERSION] = sw_version
-        device_registry = dr.async_get(hass)
-        device_registry.async_get_or_create(
-            config_entry_id=entry.entry_id,
-            **device_info,
-        )
+    await async_setup_device_entry(router, entry, router_info, hass)
 
     # Forward config entry setup to platforms
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -492,21 +509,17 @@ async def async_unload_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up Huawei LTE component."""
-
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = HuaweiLteData(hass_config=config, routers={})
 
-    def service_handler(service: ServiceCall) -> None:
-        """Apply a service.
-
-        We key this using the router URL instead of its unique id / serial number,
-        because the latter is not available anywhere in the UI.
-        """
+    async def service_handler(service: ServiceCall) -> None:
+        """Apply a service."""
         routers = hass.data[DOMAIN].routers
-        if url := service.data.get(CONF_URL):
-            router = next(
-                (router for router in routers.values() if router.url == url), None
-            )
+        url = service.data.get(CONF_URL)
+        router = None
+
+        if url:
+            router = next((r for r in routers.values() if r.url == url), None)
         elif not routers:
             _LOGGER.error("%s: no routers configured", service.service)
             return
@@ -516,46 +529,49 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             _LOGGER.error(
                 "%s: more than one router configured, must specify one of URLs %s",
                 service.service,
-                sorted(router.url for router in routers.values()),
+                sorted(r.url for r in routers.values()),
             )
             return
+
         if not router:
             _LOGGER.error("%s: router %s unavailable", service.service, url)
             return
 
-        if service.service == SERVICE_CLEAR_TRAFFIC_STATISTICS:
+        if service.service in [SERVICE_CLEAR_TRAFFIC_STATISTICS, SERVICE_REBOOT]:
             if router.suspended:
                 _LOGGER.debug("%s: ignored, integration suspended", service.service)
                 return
-            result = router.client.monitoring.set_clear_traffic()
-            _LOGGER.debug("%s: %s", service.service, result)
-        elif service.service == SERVICE_REBOOT:
-            if router.suspended:
-                _LOGGER.debug("%s: ignored, integration suspended", service.service)
-                return
-            result = router.client.device.set_control(ControlModeEnum.REBOOT)
-            _LOGGER.debug("%s: %s", service.service, result)
-        elif service.service == SERVICE_RESUME_INTEGRATION:
-            # Login will be handled automatically on demand
-            router.suspended = False
-            _LOGGER.debug("%s: %s", service.service, "done")
-        elif service.service == SERVICE_SUSPEND_INTEGRATION:
-            router.logout()
-            router.suspended = True
-            _LOGGER.debug("%s: %s", service.service, "done")
-        else:
-            _LOGGER.error("%s: unsupported service", service.service)
+
+        result = async_provide_results(service, router)
+
+        _LOGGER.debug("%s: %s", service.service, result)
 
     for service in ADMIN_SERVICES:
         async_register_admin_service(
-            hass,
-            DOMAIN,
-            service,
-            service_handler,
-            schema=SERVICE_SCHEMA,
+            hass, DOMAIN, service, service_handler, schema=SERVICE_SCHEMA
         )
 
     return True
+
+
+async def async_provide_results(service: ServiceCall, router: Router) -> Any:
+    """Build result of the service call."""
+    result = None
+    if service.service == SERVICE_CLEAR_TRAFFIC_STATISTICS:
+        result = router.client.monitoring.set_clear_traffic()
+    elif service.service == SERVICE_REBOOT:
+        result = router.client.device.set_control(ControlModeEnum.REBOOT)
+    elif service.service == SERVICE_RESUME_INTEGRATION:
+        router.suspended = False
+        result = "done"
+    elif service.service == SERVICE_SUSPEND_INTEGRATION:
+        router.logout()
+        router.suspended = True
+        result = "done"
+    else:
+        _LOGGER.error("%s: unsupported service", service.service)
+        return
+    return result
 
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
