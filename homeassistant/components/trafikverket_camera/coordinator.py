@@ -23,7 +23,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .CarIdentifier import DummyAI
 from .CarIdentifier import CarRectangle
 
-from .const import CONF_LOCATION, DOMAIN
+from .const import CONF_LOCATION, DOMAIN, TrafficMeasure
 
 _LOGGER = logging.getLogger(__name__)
 TIME_BETWEEN_UPDATES = timedelta(minutes=5)  # TODO HOLDUP can we just not?
@@ -36,7 +36,7 @@ class CameraData:
     data: CameraInfo
     image: bytes | None
     car_list: list[CarRectangle]
-    # TODO maybe add traffic measure or nr_cars? ask frontend
+    traffic_measure: TrafficMeasure
 
 
 class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
@@ -60,6 +60,7 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
         camera_info: CameraInfo
         image: bytes | None = None
         car_list = []
+        traffic_measure = TrafficMeasure.Unknown
         try:
             camera_info = await self._camera_api.async_get_camera(self._location)
         except (NoCameraFound, MultipleCamerasFound, UnknownError) as error:
@@ -68,7 +69,7 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
             raise ConfigEntryAuthFailed from error
 
         if camera_info.photourl is None:
-            return CameraData(data=camera_info, image=None, car_list=car_list)
+            return CameraData(data=camera_info, image=None, car_list=car_list, traffic_measure=traffic_measure)
 
         image_url = camera_info.photourl
         if camera_info.fullsizephoto:
@@ -79,9 +80,26 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
                 raise UpdateFailed("Could not retrieve image")
             image = BytesIO(await get_image.read()).getvalue()
             car_list = self.process_image(camera_info, image)
+            traffic_measure = self.calculate_traffic_measure(camera_info, len(car_list))
 
-        return CameraData(data=camera_info, image=image, car_list=car_list)
+        return CameraData(data=camera_info, image=image, car_list=car_list, traffic_measure=traffic_measure)
 
     def process_image(self, camera_info, image: bytes | None) -> list[CarRectangle]:
-        # Todo save statistics in database (camera_data, nr_cars)
+        # Todo save statistics in database (camera_info, nr_cars)
         return self._AI.get_cars(image)
+
+    def calculate_traffic_measure(self, camera_info, nr_cars) -> TrafficMeasure:
+        values = [0, 1, 2, 3, 4, 5]  # TODO query database
+        values.append(nr_cars)
+        values.sort()
+        # if nr_cars reoccurs many times we take the middle position
+        index = values.index(nr_cars) + values.count(nr_cars) / 2
+        percent = index / len(values)
+
+        if percent > 0.9:
+            return TrafficMeasure.Critical
+        if percent > 0.7:
+            return TrafficMeasure.High
+        if percent > 0.5:
+            return TrafficMeasure.Medium
+        return TrafficMeasure.Low
