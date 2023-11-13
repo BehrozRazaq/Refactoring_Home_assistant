@@ -1,18 +1,24 @@
+from dataclasses import dataclass
+
+
+@dataclass
 class Entry:
     location: str
-    time: int  # ?
+    time: int
     nr_cars: int
 
 
-class StatisticHandler:
+class StatisticsHandler:
     statistics: list[Entry]
 
-    def __init__(self):
-        self.statistics = self.database_querier()
-        # query database
+    def __init__(self, location):
+        self.statistics = []
+        #todo query database (get all entries from this camera)
 
-    def new_entry(self, entry: Entry):
-        self.statistics.append(entry)
+    def new_entry(self, location: str, time: int, nr_cars: int):
+        self.statistics.append(Entry(location, time, nr_cars))
+        #todo add to database
 
-    def database_querier(self) -> list[Entry]:
-        pass
+    def get_data(self) -> list[Entry]:
+        return self.statistics
+

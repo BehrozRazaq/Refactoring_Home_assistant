@@ -20,8 +20,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from .CarIdentifier import DummyAI
-from .CarIdentifier import CarRectangle
+from .CarIdentifier import DummyAI, CarRectangle
+from .Statistics import StatisticsHandler, Entry
 
 from .const import CONF_LOCATION, DOMAIN, TrafficMeasure
 
@@ -39,6 +39,12 @@ class CameraData:
     traffic_measure: TrafficMeasure
 
 
+@dataclass
+class CameraState:
+    latest_data: CameraData
+    statistics: list[Entry]
+
+
 class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
     """A Trafikverket Data Update Coordinator."""
 
@@ -54,6 +60,7 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
         self._camera_api = TrafikverketCamera(self.session, entry.data[CONF_API_KEY])
         self._location = entry.data[CONF_LOCATION]
         self._AI = DummyAI()  # TODO change once new AI drops
+        self._statistics_handler = StatisticsHandler(self._location)
 
     async def _async_update_data(self) -> CameraData:
         """Fetch data from Trafikverket."""
@@ -82,11 +89,20 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
             car_list = self.process_image(camera_info, image)
             traffic_measure = self.calculate_traffic_measure(camera_info, len(car_list))
 
-        return CameraData(data=camera_info, image=image, car_list=car_list, traffic_measure=traffic_measure)
+        camera_data = CameraData(data=camera_info, image=image, car_list=car_list, traffic_measure=traffic_measure)
 
-    def process_image(self, camera_info, image: bytes | None) -> list[CarRectangle]:
-        # Todo save statistics in database (camera_info, nr_cars)
-        return self._AI.get_cars(image)
+        camera_state = CameraState(
+            latest_data=camera_data,
+            statistics=self._statistics_handler.get_data()
+        )
+        self.hass.states.set(f"{DOMAIN}.state.{self._location}", camera_state)
+
+        return camera_data
+
+    def process_image(self, camera_info: CameraInfo, image: bytes | None) -> list[CarRectangle]:
+        rectangles = self._AI.get_cars(image)
+        self._statistics_handler.new_entry(self._location, camera_info.phototime, len(rectangles))
+        return rectangles
 
     def calculate_traffic_measure(self, camera_info, nr_cars) -> TrafficMeasure:
         values = [0, 1, 2, 3, 4, 5]  # TODO query database
@@ -103,3 +119,5 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
         if percent > 0.5:
             return TrafficMeasure.Medium
         return TrafficMeasure.Low
+
+
