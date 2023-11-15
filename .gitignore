@@ -1,5 +1,8 @@
-/config
+/config/*
+!/config/www
 config2/*
+.scannerwork/
+hass_env/
 
 tests/testing_config/deps
 tests/testing_config/home-assistant.log*
