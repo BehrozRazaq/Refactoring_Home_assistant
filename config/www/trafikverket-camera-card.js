@@ -26,14 +26,22 @@ import {
 } from "https://unpkg.com/lit-element@2.0.1/lit-element.js?module";
 
 class TrafikverketCameraCard extends LitElement {
+  constructor() {
+    super();
+    this.selectedIndex = 0;
+    this.mode = "Image";
+  }
+
   static get properties() {
     return {
       hass: {},
       config: {},
+      selectedIndex: { type: Number },
+      mode: { type: String },
     };
   }
 
-  renderListItem(cameraData) {
+  renderListItem(cameraData, index) {
     const imgPath = cameraData.attributes.entity_picture;
     const friendlyName = cameraData.attributes.friendly_name;
     const quantity = cameraData.attributes.traffic_quantity
@@ -51,9 +59,16 @@ class TrafikverketCameraCard extends LitElement {
         labelText = "SOMETHING WENT WRONG";
         break;
     }
+    let extraClass = "";
+    if (index == this.selectedIndex) {
+      extraClass = " item-selected";
+    }
 
     return html`
-      <div class="camera-list-item">
+      <div
+        class="camera-list-item${extraClass}"
+        @click="${(_) => (this.selectedIndex = index)}"
+      >
         <img class="camera-preview-column" src="${imgPath}" />
         <p class="camera-location-column">${friendlyName}</p>
         <div class="traffic-density-label" style="background: ${labelColor};">
@@ -63,10 +78,28 @@ class TrafikverketCameraCard extends LitElement {
     `;
   }
 
+  renderBigView() {
+    const cameraData =
+      this.hass.states[this.config.cameras[this.selectedIndex]];
+    const imgPath = cameraData.attributes.entity_picture;
+    const friendlyName = cameraData.attributes.friendly_name;
+    return html`
+      <div>
+        <h3>${friendlyName}</h3>
+        <img class="camera-large" src="${imgPath}" />
+        <div>
+          <p class="arrow left" />
+          <p>${this.mode}</p>
+          <p class="arrow right" />
+        </div>
+      </div>
+    `;
+  }
+
   render() {
     return html`
       <ha-card header="Camera Card">
-        <div class="card-content">
+        <div id="camera-card-content">
           <div id="camera-list">
             <div id="camera-list-description">
               <p class="camera-preview-column">Last picture</p>
@@ -74,11 +107,12 @@ class TrafikverketCameraCard extends LitElement {
               <p style="margin-right: 20px;">Traffic</p>
             </div>
             <div id="camera-list-contents">
-              ${this.config.cameras.map((cameraId) =>
-                this.renderListItem(this.hass.states[cameraId])
+              ${this.config.cameras.map((cameraId, index) =>
+                this.renderListItem(this.hass.states[cameraId], index)
               )}
             </div>
           </div>
+          ${this.renderBigView()}
         </div>
       </ha-card>
     `;
@@ -101,6 +135,21 @@ class TrafikverketCameraCard extends LitElement {
 
   static get styles() {
     return css`
+      .arrow {
+        border: solid black;
+        border-width: 0 3px 3px 0;
+        display: inline-block;
+        padding: 3px;
+      }
+      .right {
+        transform: rotate(-45deg);
+      }
+      .left {
+        transform: rotate(135deg);
+      }
+      #camera-card-content {
+        display: flex;
+      }
       #camera-list {
         background: #777777;
         color: #222222;
@@ -116,6 +165,9 @@ class TrafikverketCameraCard extends LitElement {
       #camera-list-description > p {
         margin: 0px;
         align-self: center;
+      }
+      .camera-large {
+        width: 400px;
       }
       .camera-list-item {
         display: flex;
@@ -141,6 +193,9 @@ class TrafikverketCameraCard extends LitElement {
         align-self: center;
         margin-right: 10px;
         text-align: center;
+      }
+      .item-selected {
+        background: #444444;
       }
     `;
   }
