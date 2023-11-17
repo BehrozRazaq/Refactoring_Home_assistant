@@ -71,4 +71,7 @@ class TVCamera(TrafikverketCameraEntity, Camera):
             ATTR_DESCRIPTION: self.coordinator.data.data.description,
             ATTR_LOCATION: self.coordinator.data.data.location,
             ATTR_TYPE: self.coordinator.data.data.camera_type,
+            "statistics": self.coordinator.statistics,
+            "traffic_measure": self.coordinator.traffic_measure,
+            "car_rectangles": self.coordinator.car_rectangles,
         }
