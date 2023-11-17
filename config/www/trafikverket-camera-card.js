@@ -25,6 +25,9 @@ import {
   css,
 } from "https://unpkg.com/lit-element@2.0.1/lit-element.js?module";
 
+import "https://unpkg.com/chart.js@4.2.0/dist/chart.umd.js";
+import "https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns";
+
 class TrafikverketCameraCard extends LitElement {
   constructor() {
     super();
@@ -78,6 +81,54 @@ class TrafikverketCameraCard extends LitElement {
     `;
   }
 
+  firstUpdated() {
+    this.hass.states[this.config.cameras[this.selectedIndex]];
+    //nrOfCars = cameraData.attributes.
+    const ctx = this.shadowRoot.getElementById("myChart").getContext("2d");
+
+    //const labels = utils.months;
+
+    new Chart(ctx, {
+      type: "line",
+      data: {
+        datasets: [
+          {
+            label: "Number of Cars",
+            data: [
+              { x: "2023-11-17T03:00:00", y: "3" },
+              { x: "2023-11-17T04:00:00", y: "20" },
+              { x: "2023-11-17T05:00:00", y: "21" },
+              { x: "2023-11-17T06:00:00", y: "22" },
+              { x: "2023-11-17T07:00:00", y: "8" },
+              { x: "2023-11-17T08:00:00", y: "10" },
+              { x: "2023-11-17T09:00:00", y: "15" },
+              { x: "2023-11-17T10:00:00", y: "13" },
+              { x: "2023-11-17T11:00:00", y: "23" },
+              { x: "2023-11-17T12:00:00", y: "25" },
+              { x: Date.now(), y: "5" },
+            ],
+            borderWidth: 1,
+          },
+        ],
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true,
+          },
+          x: {
+            parsing: false,
+            type: "time",
+            time: {
+              //This unit can be changed to match what we want
+              unit: "hour",
+            },
+          },
+        },
+      },
+    });
+  }
+
   renderBigView() {
     const cameraData =
       this.hass.states[this.config.cameras[this.selectedIndex]];
@@ -113,6 +164,9 @@ class TrafikverketCameraCard extends LitElement {
             </div>
           </div>
           ${this.renderBigView()}
+        </div>
+        <div>
+          <canvas id="myChart" width="600" height="400"></canvas>
         </div>
       </ha-card>
     `;
