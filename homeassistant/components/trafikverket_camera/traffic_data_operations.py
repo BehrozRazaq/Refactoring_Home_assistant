@@ -19,19 +19,19 @@ def insert_traffic_entry(location: str, time: str, nr_cars: int) -> None:
     )
 
 
-# Function to query number of cars in a location
-def query_cars_by_location(location: str) -> list[tuple[int]]:
-    """Query the number of cars for a specific location.
+# Function to query time and number of cars in a location
+def query_time_and_cars_by_location(location: str) -> list[tuple[str, int]]:
+    """Query the time and number of cars for a specific location.
 
     Args:
         location: The location of the camera.
 
     Returns:
-        A list of tuples containing the number of cars at the specified location.
+        A list of tuples containing the time and number of cars at the specified location.
     """
-    cursor.execute("SELECT nr_cars FROM traffic_amount WHERE location = ?", (location,))
-    cars = cursor.fetchall()
-    return cars
+    cursor.execute("SELECT time, nr_cars FROM traffic_amount WHERE location = ?", (location,))
+    entries = cursor.fetchall()
+    return entries
 
 
 # Function to query time and number of cars by location and time

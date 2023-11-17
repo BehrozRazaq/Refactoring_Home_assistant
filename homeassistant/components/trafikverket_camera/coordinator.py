@@ -21,7 +21,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from .CarIdentifier import CarIdentifier, CarRectangle
-from .Statistics import StatisticsHandler, Entry
+from .Statistics import StatisticsHandler
 
 from .const import CONF_LOCATION, DOMAIN, TrafficMeasure
 
@@ -42,7 +42,7 @@ class CameraData:
 @dataclass
 class CameraState:
     latest_data: CameraData
-    statistics: list[Entry]
+    statistics: list[tuple[str, int]]
 
 
 class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
@@ -59,7 +59,7 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
         self.session = async_get_clientsession(hass)
         self._camera_api = TrafikverketCamera(self.session, entry.data[CONF_API_KEY])
         self._location = entry.data[CONF_LOCATION]
-        self._AI = CarIdentifier()  # TODO change once new AI drops
+        self._AI = CarIdentifier()
         self._statistics_handler = StatisticsHandler(self._location)
 
     async def _async_update_data(self) -> CameraData:
@@ -118,8 +118,8 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
         return rectangles
 
     def calculate_traffic_measure(self, camera_info, nr_cars) -> TrafficMeasure:
-        values = [0, 1, 2, 3, 4, 5]  # TODO query database
-        values.append(nr_cars)
+        _, values = zip(*StatisticsHandler.get_data(self._location))
+
         values.sort()
         # if nr_cars reoccurs many times we take the middle position
         index = values.index(nr_cars) + values.count(nr_cars) / 2
