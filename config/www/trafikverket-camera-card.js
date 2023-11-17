@@ -27,6 +27,9 @@ import {
 
 import "https://unpkg.com/chart.js@4.2.0/dist/chart.umd.js";
 import "https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns";
+import "./trafikverket-big-camera-view.js";
+import "./trafikverket-list-item.js";
+import "./trafikverket-navigation-view.js";
 
 class TrafikverketCameraCard extends LitElement {
   constructor() {
@@ -42,43 +45,6 @@ class TrafikverketCameraCard extends LitElement {
       selectedIndex: { type: Number },
       mode: { type: String },
     };
-  }
-
-  renderListItem(cameraData, index) {
-    const imgPath = cameraData.attributes.entity_picture;
-    const friendlyName = cameraData.attributes.friendly_name;
-    const quantity = cameraData.attributes.traffic_quantity
-      ? cameraData.attributes.traffic_quantity
-      : "low";
-    let labelColor;
-    let labelText;
-    switch (quantity) {
-      case "low":
-        labelColor = "#00ff00";
-        labelText = "low";
-        break;
-      default:
-        labelColor = "#ffffff";
-        labelText = "SOMETHING WENT WRONG";
-        break;
-    }
-    let extraClass = "";
-    if (index == this.selectedIndex) {
-      extraClass = " item-selected";
-    }
-
-    return html`
-      <div
-        class="camera-list-item${extraClass}"
-        @click="${(_) => (this.selectedIndex = index)}"
-      >
-        <img class="camera-preview-column" src="${imgPath}" />
-        <p class="camera-location-column">${friendlyName}</p>
-        <div class="traffic-density-label" style="background: ${labelColor};">
-          ${labelText}
-        </div>
-      </div>
-    `;
   }
 
   firstUpdated() {
@@ -129,27 +95,13 @@ class TrafikverketCameraCard extends LitElement {
     });
   }
 
-  renderBigView() {
+  render() {
     const cameraData =
       this.hass.states[this.config.cameras[this.selectedIndex]];
     const imgPath = cameraData.attributes.entity_picture;
     const friendlyName = cameraData.attributes.friendly_name;
     return html`
-      <div>
-        <h3>${friendlyName}</h3>
-        <img class="camera-large" src="${imgPath}" />
-        <div>
-          <p class="arrow left" />
-          <p>${this.mode}</p>
-          <p class="arrow right" />
-        </div>
-      </div>
-    `;
-  }
-
-  render() {
-    return html`
-      <ha-card header="Camera Card">
+      <ha-card>
         <div id="camera-card-content">
           <div id="camera-list">
             <div id="camera-list-description">
@@ -158,12 +110,27 @@ class TrafikverketCameraCard extends LitElement {
               <p style="margin-right: 20px;">Traffic</p>
             </div>
             <div id="camera-list-contents">
-              ${this.config.cameras.map((cameraId, index) =>
-                this.renderListItem(this.hass.states[cameraId], index)
-              )}
+              ${this.config.cameras.map((cameraId, index) => {
+                const data = this.hass.states[cameraId];
+                const imgPath = data.attributes.entity_picture;
+                const name = data.attributes.friendly_name;
+                const selected = true ? index == this.selectedIndex : false;
+                const quantity = data.attributes.traffic_measure;
+                return html`<list-item
+                  src="${imgPath}"
+                  name="${name}"
+                  quantity="${quantity}"
+                  selected="${selected}"
+                  @click="${(_) => (this.selectedIndex = index)}"
+                />`;
+              })}
             </div>
           </div>
-          ${this.renderBigView()}
+          <div>
+            <big-camera-view name="${friendlyName}" src="${imgPath}">
+            </big-camera-view>
+            <navigation-view mode="Image"></navigation-view>
+          </div>
         </div>
         <div>
           <canvas id="myChart" width="600" height="400"></canvas>
@@ -189,17 +156,8 @@ class TrafikverketCameraCard extends LitElement {
 
   static get styles() {
     return css`
-      .arrow {
-        border: solid black;
-        border-width: 0 3px 3px 0;
-        display: inline-block;
-        padding: 3px;
-      }
-      .right {
-        transform: rotate(-45deg);
-      }
-      .left {
-        transform: rotate(135deg);
+      ha-card {
+        width: 800px;
       }
       #camera-card-content {
         display: flex;
@@ -207,6 +165,7 @@ class TrafikverketCameraCard extends LitElement {
       #camera-list {
         background: #777777;
         color: #222222;
+        margin: 20px;
         border-style: solid;
         border-width: 2px;
         border-color: #444444;
@@ -220,36 +179,7 @@ class TrafikverketCameraCard extends LitElement {
         margin: 0px;
         align-self: center;
       }
-      .camera-large {
-        width: 400px;
-      }
-      .camera-list-item {
-        display: flex;
-        justify-content: space-between;
-        border-style: solid;
-        border-width: 2px 0px 0px 0px;
-        border-color: #444444;
-        padding: 5px;
-      }
-      .camera-preview-column {
-        width: 50px;
-        height: 50px;
-        text-align: center;
-      }
-      .camera-location-column {
-        flex-grow: 2;
-        padding-left: 20px;
-      }
-      .traffic-density-label {
-        width: 50px;
-        height: 20px;
-        border-radius: 45px;
-        align-self: center;
-        margin-right: 10px;
-        text-align: center;
-      }
-      .item-selected {
-        background: #444444;
+      big-camera-view {
       }
     `;
   }
