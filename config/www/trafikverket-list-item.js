@@ -39,7 +39,7 @@ export class ListItem extends LitElement {
       text-align: center;
     }
     .item-selected {
-      background: #444444;
+      background: #666666;
     }
     .low {
       background: #00ff00;
@@ -56,11 +56,16 @@ export class ListItem extends LitElement {
     }
     .unknown {
       background: #444444;
+      font-color: #ffffff;
+    }
+    @media (prefers-color-scheme: dark) {
+      .item-selected {
+        background: #424242;
+      }
     }
   `;
 
   render() {
-    console.log(this.quantity);
     let labelClass = "";
     switch (this.quantity) {
       case 1:

@@ -12,17 +12,13 @@ export class BigCameraView extends LitElement {
 
   static styles = css`
     #camera-large {
-      border-left-style: solid;
-      border-width: 4px;
       padding: 20px;
-      border-color: #444444;
       width: inherit;
     }
     #camera-large-img {
       width: 100%;
     }
     #camera-large-title {
-      color: #222222;
       text-align: center;
     }
     .arrow {
