@@ -60,11 +60,13 @@ class TrafikverketCameraCard extends LitElement {
     const imgPath = cameraData.attributes.entity_picture;
     const friendlyName = cameraData.attributes.friendly_name;
     const statistics = JSON.stringify(cameraData.attributes.statistics);
+    const carRects = JSON.stringify(cameraData.attributes.car_rectangles);
     const infoView =
       this.mode == "Image"
         ? html`<big-camera-view
             name="${friendlyName}"
             src="${imgPath}"
+            data="${carRects}"
           ></big-camera-view>`
         : html`<statistics-view
             data="${statistics}"
