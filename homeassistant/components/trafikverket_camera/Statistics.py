@@ -1,24 +1,15 @@
-from dataclasses import dataclass
-
-
-@dataclass
-class Entry:
-    location: str
-    time: int
-    nr_cars: int
+import traffic_data_operations
 
 
 class StatisticsHandler:
-    statistics: list[Entry]
+    statistics: list[tuple[str, int]]
 
     def __init__(self, location):
-        self.statistics = []
-        #todo query database (get all entries from this camera)
+        self.statistics = traffic_data_operations.query_time_and_cars_by_location(location)
 
-    def new_entry(self, location: str, time: int, nr_cars: int):
-        self.statistics.append(Entry(location, time, nr_cars))
-        #todo add to database
+    def new_entry(self, location: str, time: str, nr_cars: int):
+        self.statistics.append((time, nr_cars))
+        traffic_data_operations.insert_traffic_entry(location, time, nr_cars)
 
-    def get_data(self) -> list[Entry]:
+    def get_data(self) -> list[tuple[str, int]]:
         return self.statistics
-
