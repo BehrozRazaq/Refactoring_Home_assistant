@@ -1,29 +1,15 @@
-"""Module for statistics of cars for Trafikverket."""
-from dataclasses import dataclass
-
-
-@dataclass
-class Entry:
-    """An entity for the database for car statistics."""
-
-    location: str
-    time: int
-    nr_cars: int
+import traffic_data_operations
 
 
 class StatisticsHandler:
-    """Handler for the database."""
+    statistics: list[tuple[str, int]]
 
-    statistics: list[Entry]
+    def __init__(self, location):
+        self.statistics = traffic_data_operations.query_time_and_cars_by_location(location)
 
-    def __init__(self, location: str) -> None:
-        """Based on location, creates a handler for the database."""
-        self.statistics = []
+    def new_entry(self, location: str, time: str, nr_cars: int):
+        self.statistics.append((time, nr_cars))
+        traffic_data_operations.insert_traffic_entry(location, time, nr_cars)
 
-    def new_entry(self, location: str, time: int, nr_cars: int) -> None:
-        """Add new entry to the database."""
-        self.statistics.append(Entry(location, time, nr_cars))
-
-    def get_data(self) -> list[Entry]:
-        """Get all data from the database."""
+    def get_data(self) -> list[tuple[str, int]]:
         return self.statistics

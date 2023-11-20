@@ -20,13 +20,15 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from .CarIdentifier import CarIdentifier, CarRectangle
+from .Statistics import StatisticsHandler
 
 from .CarIdentifier import CarIdentifier, CarRectangle
 from .const import CONF_LOCATION, DOMAIN, TrafficMeasure
 from .Statistics import Entry, StatisticsHandler
 
 _LOGGER = logging.getLogger(__name__)
-TIME_BETWEEN_UPDATES = timedelta(minutes=5)
+TIME_BETWEEN_UPDATES = timedelta(minutes=5)  # TODO HOLDUP can we just not?
 
 
 @dataclass
@@ -41,10 +43,8 @@ class CameraData:
 
 @dataclass
 class CameraState:
-    """Dataclass for state of camera."""
-
     latest_data: CameraData
-    statistics: list[Entry]
+    statistics: list[tuple[str, int]]
 
 
 class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
@@ -130,8 +130,9 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
         self, camera_info: CameraInfo, nr_cars: int
     ) -> TrafficMeasure:
         """Give a label for how much traffic there is at the moment."""
-        values = [0, 1, 2, 3, 4, 5]
-        values.append(nr_cars)
+        _, values = zip(*StatisticsHandler.get_data(self._location))
+       
+
         values.sort()
         # if nr_cars reoccurs many times we take the middle position
         index = values.index(nr_cars) + values.count(nr_cars) / 2
