@@ -21,6 +21,9 @@ export class StatisticsView extends LitElement {
       y: d.nr_cars,
     }));
 
+    console.log(refinedData);
+
+
     //const labels = utils.months;
 
     new Chart(ctx, {
@@ -52,7 +55,7 @@ export class StatisticsView extends LitElement {
     });
   }
 
-  static styles = css`
+  static styles = css
     #statistics {
       width: inherit;
       padding: 20px;
@@ -63,13 +66,13 @@ export class StatisticsView extends LitElement {
     #statistics-container {
       padding: 20px;
     }
-  `;
+  ;
 
   render() {
-    return html` <div id="statistics-container">
+    return html <div id="statistics-container">
       <h3 id="statistics-title">${this.name}</h3>
       <canvas id="statistics"></canvas>
-    </div>`;
+    </div>;
   }
 }
 

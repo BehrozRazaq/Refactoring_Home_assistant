@@ -20,12 +20,10 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from .CarIdentifier import CarIdentifier, CarRectangle
-from .Statistics import StatisticsHandler
-
-from .CarIdentifier import CarIdentifier, CarRectangle
+from .car_identifier import CarIdentifier, CarRectangle
+from .traffic_data_operations import Operations
+from .statistics import StatisticsHandler
 from .const import CONF_LOCATION, DOMAIN, TrafficMeasure
-from .Statistics import Entry, StatisticsHandler
 
 _LOGGER = logging.getLogger(__name__)
 TIME_BETWEEN_UPDATES = timedelta(minutes=5)  # TODO HOLDUP can we just not?
@@ -50,7 +48,7 @@ class CameraState:
 class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
     """A Trafikverket Data Update Coordinator."""
 
-    statistics: list[Entry] = []
+    statistics: list[tuple[str, int]]
     car_rectangles: list[CarRectangle] = []
     traffic_measure = TrafficMeasure.Unknown
 
@@ -65,6 +63,7 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
         self.session = async_get_clientsession(hass)
         self._camera_api = TrafikverketCamera(self.session, entry.data[CONF_API_KEY])
         self._location = entry.data[CONF_LOCATION]
+        self._operations = Operations()
         self._AI = CarIdentifier()
         self._statistics_handler = StatisticsHandler(self._location)
 
@@ -131,7 +130,6 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
     ) -> TrafficMeasure:
         """Give a label for how much traffic there is at the moment."""
         _, values = zip(*StatisticsHandler.get_data(self._location))
-       
 
         values.sort()
         # if nr_cars reoccurs many times we take the middle position
