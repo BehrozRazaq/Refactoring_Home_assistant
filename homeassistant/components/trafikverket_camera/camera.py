@@ -73,5 +73,7 @@ class TVCamera(TrafikverketCameraEntity, Camera):
             ATTR_TYPE: self.coordinator.data.data.camera_type,
             "statistics": self.coordinator.statistics,
             "traffic_measure": self.coordinator.traffic_measure,
-            "car_rectangles": self.coordinator.car_rectangles,
+            "car_rectangles": [
+                rectangle.to_dict() for rectangle in self.coordinator.car_rectangles
+            ],
         }

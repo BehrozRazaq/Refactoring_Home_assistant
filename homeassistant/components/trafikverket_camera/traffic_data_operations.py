@@ -1,12 +1,31 @@
 """Functions to interact with an SQLite database for traffic data."""
 import sqlite3
 
-conn = sqlite3.connect("home_assistant.db")
-
-cursor = conn.cursor()
 
 class Operations:
-    def insert_traffic_entry(location: str, time: str, nr_cars: int) -> None:
+    """Database interface."""
+
+    def __init__(self) -> None:
+        """Create an empty table if traffic_amount is not present."""
+        conn = sqlite3.connect(
+            "./homeassistant/components/trafikverket_camera/home_assistant.db"
+        )
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='traffic_amount'"
+        )
+        if cursor.fetchone() is None:
+            cursor.execute(
+                "CREATE TABLE traffic_amount (location VARCHAR(255), time DATETIME, nr_cars INTEGER NOT NULL)"
+            )
+
+    def _get_database(self) -> sqlite3.Connection:
+        return sqlite3.connect(
+            "./homeassistant/components/trafikverket_camera/home_assistant.db"
+        )
+
+    def insert_traffic_entry(self, location: str, time: str, nr_cars: int) -> None:
         """Insert a new traffic entry into the database.
 
         Args:
@@ -14,13 +33,17 @@ class Operations:
             time: The timestamp of the traffic entry.
             nr_cars: The number of cars at the given location and time.
         """
+        conn = self._get_database()
+        cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO traffic_amount VALUES (?,?,?)", (location, time, nr_cars)
+            "INSERT INTO traffic_amount (location, time, nr_cars) VALUES (?,?,?)",
+            (location, time, nr_cars),
         )
-
+        conn.commit()
+        conn.close()
 
     # Function to query time and number of cars in a location
-    def query_time_and_cars_by_location(location: str) -> list[tuple[str, int]]:
+    def query_time_and_cars_by_location(self, location: str) -> list[tuple[str, int]]:
         """Query the time and number of cars for a specific location.
 
         Args:
@@ -29,14 +52,20 @@ class Operations:
         Returns:
             A list of tuples containing the time and number of cars at the specified location.
         """
-        cursor.execute("SELECT time, nr_cars FROM traffic_amount WHERE location = ?", (location,))
+        conn = self._get_database()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT time, nr_cars FROM traffic_amount WHERE location = ?", (location,)
+        )
         entries = cursor.fetchall()
+        conn.close()
+        if not entries:
+            return []
         return entries
-
 
     # Function to query time and number of cars by location and time
     def query_time_and_cars_by_location_and_time(
-        location: str, start_time: str, end_time: str
+        self, location: str, start_time: str, end_time: str
     ) -> list[tuple[str, int]]:
         """Query the time and number of cars for a given location and time span.
 
@@ -48,6 +77,8 @@ class Operations:
         Returns:
         A list of tuples containing the time and number of cars at the specified location and time span.
         """
+        conn = self._get_database()
+        cursor = conn.cursor()
         cursor.execute(
             """
             SELECT time, nr_cars
@@ -57,7 +88,5 @@ class Operations:
             (location, start_time, end_time),
         )
         data = cursor.fetchall()
+        conn.close()
         return data
-
-
-    conn.close()

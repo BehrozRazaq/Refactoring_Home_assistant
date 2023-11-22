@@ -6,8 +6,8 @@ import {
 
 export class BigCameraView extends LitElement {
   static properties = {
-    src: String,
-    name: String,
+    src: {},
+    name: {},
     data: {},
   };
 
@@ -18,20 +18,19 @@ export class BigCameraView extends LitElement {
     canvas.height = imageElement.height;
     const ctx = canvas.getContext("2d");
     const image = new Image();
+    const data = this.formattedData ? this.formattedData : [];
     image.onload = function () {
       const widthScale = canvas.width / image.width;
       const heightScale = canvas.height / image.height;
-
-      const data = this.data ? JSON.parse(this.data) : [];
 
       for (let i = 0; i < data.length; i++) {
         const d = data[i];
         ctx.beginPath();
         ctx.rect(
-          Math.round(d.x0 * widthScale),
-          Math.round(d.y0 * heightScale),
           Math.round(d.x1 * widthScale),
-          Math.round(d.y1 * heightScale)
+          Math.round(d.y1 * heightScale),
+          Math.round(d.x2 * widthScale),
+          Math.round(d.y2 * heightScale)
         );
         ctx.strokeStyle = "#ff0000ff";
         ctx.lineWidth = 2;
@@ -92,6 +91,9 @@ export class BigCameraView extends LitElement {
   `;
 
   render() {
+    if (this.data) {
+      this.formattedData = JSON.parse(this.data);
+    }
     const item = html`
       <div id="camera-large">
         <h3 id="camera-large-title">${this.name}</h3>

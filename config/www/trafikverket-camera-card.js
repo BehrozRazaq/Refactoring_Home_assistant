@@ -64,9 +64,9 @@ class TrafikverketCameraCard extends LitElement {
     const infoView =
       this.mode == "Image"
         ? html`<big-camera-view
+            data="${carRects}"
             name="${friendlyName}"
             src="${imgPath}"
-            data="${carRects}"
           ></big-camera-view>`
         : html`<statistics-view
             data="${statistics}"
@@ -93,7 +93,10 @@ class TrafikverketCameraCard extends LitElement {
                   name="${name}"
                   quantity="${quantity}"
                   selected="${selected}"
-                  @click="${(_) => (this.selectedIndex = index)}"
+                  @click="${(_) => {
+                    this.selectedIndex = index;
+                    this.mode = "Image";
+                  }}"
                 />`;
               })}
             </div>

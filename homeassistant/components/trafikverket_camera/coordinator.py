@@ -20,13 +20,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
 from .car_identifier import CarIdentifier, CarRectangle
-from .traffic_data_operations import Operations
-from .statistics import StatisticsHandler
 from .const import CONF_LOCATION, DOMAIN, TrafficMeasure
+from .statistics import StatisticsHandler
+from .traffic_data_operations import Operations
 
 _LOGGER = logging.getLogger(__name__)
-TIME_BETWEEN_UPDATES = timedelta(minutes=5)  # TODO HOLDUP can we just not?
+TIME_BETWEEN_UPDATES = timedelta(minutes=5)
 
 
 @dataclass
@@ -41,6 +42,8 @@ class CameraData:
 
 @dataclass
 class CameraState:
+    """State of the trafikverket Camera."""
+
     latest_data: CameraData
     statistics: list[tuple[str, int]]
 
@@ -95,8 +98,9 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
         async with self.session.get(image_url, timeout=10) as get_image:
             if get_image.status not in range(200, 299):
                 raise UpdateFailed("Could not retrieve image")
-            image = BytesIO(await get_image.read()).getvalue()
-            car_list = self.process_image(camera_info, image)
+            image_stream = BytesIO(await get_image.read())
+            image = image_stream.getvalue()
+            car_list = self.process_image(camera_info, image_stream)
             traffic_measure = self.calculate_traffic_measure(camera_info, len(car_list))
 
         camera_data = CameraData(
@@ -113,14 +117,11 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
         return camera_data
 
     def process_image(
-        self, camera_info: CameraInfo, image: bytes | None
+        self, camera_info: CameraInfo, image: BytesIO | None
     ) -> list[CarRectangle]:
         """Give the image to the model for prediction."""
         rectangles = self._AI.get_cars(image)
-        if camera_info.phototime:
-            time = camera_info.phototime.microsecond
-        else:
-            time = -1
+        time = str(camera_info.phototime)
 
         self._statistics_handler.new_entry(self._location, time, len(rectangles))
         return rectangles
@@ -129,9 +130,9 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
         self, camera_info: CameraInfo, nr_cars: int
     ) -> TrafficMeasure:
         """Give a label for how much traffic there is at the moment."""
-        _, values = zip(*StatisticsHandler.get_data(self._location))
-
+        values = [values[1] for values in self._statistics_handler.get_data()]
         values.sort()
+
         # if nr_cars reoccurs many times we take the middle position
         index = values.index(nr_cars) + values.count(nr_cars) / 2
         percent = index / len(values)
