@@ -36,7 +36,6 @@ class Operations:
             )
             conn.commit()
 
-    # Function to query time and number of cars in a location
     def query_time_and_cars_by_location(self, location: str) -> list[tuple[str, int]]:
         """Query the time and number of cars for a specific location.
 
@@ -57,7 +56,6 @@ class Operations:
             return []
         return entries
 
-    # Function to query time and number of cars by location and time
     def query_time_and_cars_by_location_and_time(
         self, location: str, start_time: str, end_time: str
     ) -> list[tuple[str, int]]:
