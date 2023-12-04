@@ -102,8 +102,12 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
                 raise UpdateFailed("Could not retrieve image")
             image_stream = BytesIO(await get_image.read())
             image = image_stream.getvalue()
-            car_list = self.process_image(camera_info, image_stream)
-            traffic_measure = self.calculate_traffic_measure(camera_info, len(car_list))
+
+            car_list = self._AI.get_cars(image_stream)
+            traffic_measure = self.calculate_traffic_measure(len(car_list))
+
+            time = str(camera_info.phototime)
+            self._statistics_handler.new_entry(self._location, time, len(car_list))
 
         camera_data = CameraData(
             data=camera_info,
@@ -118,31 +122,24 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
 
         return camera_data
 
-    def process_image(
-        self, camera_info: CameraInfo, image: BytesIO | None
-    ) -> list[CarRectangle]:
-        """Give the image to the model for prediction."""
-        rectangles = self._AI.get_cars(image)
-        time = str(camera_info.phototime)
-
-        self._statistics_handler.new_entry(self._location, time, len(rectangles))
-        return rectangles
-
     def calculate_traffic_measure(
-        self, camera_info: CameraInfo, nr_cars: int
+        self, nr_cars: int
     ) -> TrafficMeasure:
         """Give a label for how much traffic there is at the moment."""
+        if nr_cars < 0: return TrafficMeasure.Unknown
+
         values = [values[1] for values in self._statistics_handler.get_data()]
+        values.append(nr_cars)
         values.sort()
 
         # if nr_cars reoccurs many times we take the middle position
         index = values.index(nr_cars) + values.count(nr_cars) / 2
         percent = index / len(values)
 
-        if percent > 0.9:
+        if percent >= 0.9:
             return TrafficMeasure.Critical
-        if percent > 0.7:
+        if percent >= 0.7:
             return TrafficMeasure.High
-        if percent > 0.5:
+        if percent >= 0.5:
             return TrafficMeasure.Medium
         return TrafficMeasure.Low
