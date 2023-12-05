@@ -1,4 +1,6 @@
 """Handles all the statistics."""
+from typing import Optional
+
 from .traffic_data_operations import Operations
 
 
@@ -16,7 +18,8 @@ class StatisticsHandler:
 
     def new_entry(self, location: str, time: str, nr_cars: int) -> None:
         """Save a new data point."""
-        if nr_cars < 0: return
+        if nr_cars < 0:
+            return
         self.statistics.append((time, nr_cars))
         self.database_connector.insert_traffic_entry(location, time, nr_cars)
 

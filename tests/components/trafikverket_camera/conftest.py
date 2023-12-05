@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import sqlite3
 from unittest.mock import patch
 
 import pytest
@@ -67,3 +68,24 @@ def fixture_get_camera() -> CameraInfo:
         status="Running",
         camera_type="Road",
     )
+
+
+@pytest.fixture(name="mock_database")
+def setup_temporary_database(tmp_path):
+    """Set up the temp database for testing."""
+    temp_db_file = str(tmp_path / "test_db.db")
+
+    with sqlite3.connect(temp_db_file) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS traffic_amount (
+                location VARCHAR(255),
+                time DATETIME,
+                nr_cars INTEGER NOT NULL
+            )
+        """
+        )
+        conn.commit()
+
+    return temp_db_file

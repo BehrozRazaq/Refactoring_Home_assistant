@@ -8,28 +8,7 @@ from homeassistant.components.trafikverket_camera.traffic_data_operations import
 )
 
 
-@pytest.fixture
-def setup_temporary_database(tmp_path):
-    """Set up the temp database for testing."""
-    temp_db_file = str(tmp_path / "test_db.db")
-
-    with sqlite3.connect(temp_db_file) as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS traffic_amount (
-                location VARCHAR(255),
-                time DATETIME,
-                nr_cars INTEGER NOT NULL
-            )
-        """
-        )
-        conn.commit()
-
-    return temp_db_file
-
-
-def test_insert_traffic_entry(setup_temporary_database):
+def test_insert_traffic_entry(mock_database):
     """Tests the function insert_traffic_entry."""
     default_time = "2023-01-01 12:00:00"
     default_location = "Bur nordöst"
@@ -38,7 +17,7 @@ def test_insert_traffic_entry(setup_temporary_database):
     valid_nr_cars = [10, 100, 0, 1000]
     invalid_nr_cars = [-10, 5000]
 
-    operations = Operations(db_file=setup_temporary_database)
+    operations = Operations(db_file=mock_database)
 
     for valid_count in valid_nr_cars:
         operations.insert_traffic_entry(default_location, default_time, valid_count)
@@ -49,7 +28,7 @@ def test_insert_traffic_entry(setup_temporary_database):
                 default_location, default_time, invalid_count
             )
 
-    with sqlite3.connect(setup_temporary_database) as conn:
+    with sqlite3.connect(mock_database) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "SELECT * FROM traffic_amount WHERE location = ?", (default_location,)
@@ -63,15 +42,15 @@ def test_insert_traffic_entry(setup_temporary_database):
     assert result[2] == default_nr_cars
 
 
-def test_query_time_and_cars_by_location(setup_temporary_database):
+def test_query_time_and_cars_by_location(mock_database):
     """Tests the function query_time_and_cars_by_location."""
     location = "test_location"
     valid_time = "2023-01-01 12:00:00"
     nr_cars = 10
 
-    operations = Operations(db_file=setup_temporary_database)
+    operations = Operations(db_file=mock_database)
 
-    with sqlite3.connect(setup_temporary_database) as conn:
+    with sqlite3.connect(mock_database) as conn:
         cursor = conn.cursor()
         cursor.execute(
             "INSERT INTO traffic_amount (location, time, nr_cars) VALUES (?, ?, ?)",

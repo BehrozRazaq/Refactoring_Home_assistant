@@ -24,7 +24,6 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .car_identifier import CarIdentifier, CarRectangle
 from .const import DOMAIN, TrafficMeasure
 from .statistics import StatisticsHandler
-from .traffic_data_operations import Operations
 
 _LOGGER = logging.getLogger(__name__)
 TIME_BETWEEN_UPDATES = timedelta(minutes=5)
@@ -122,11 +121,10 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
 
         return camera_data
 
-    def calculate_traffic_measure(
-        self, nr_cars: int
-    ) -> TrafficMeasure:
+    def calculate_traffic_measure(self, nr_cars: int) -> TrafficMeasure:
         """Give a label for how much traffic there is at the moment."""
-        if nr_cars < 0: return TrafficMeasure.Unknown
+        if nr_cars < 0:
+            return TrafficMeasure.Unknown
 
         values = [values[1] for values in self._statistics_handler.get_data()]
         values.append(nr_cars)

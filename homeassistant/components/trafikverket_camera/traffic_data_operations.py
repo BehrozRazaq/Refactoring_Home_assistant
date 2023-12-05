@@ -1,6 +1,9 @@
 """Functions to interact with an SQLite database for traffic data."""
 import os
 import sqlite3
+from typing import Optional
+
+from .const import DATABASE
 
 
 class Operations:
