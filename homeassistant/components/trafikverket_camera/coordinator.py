@@ -108,18 +108,18 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
             time = str(camera_info.phototime)
             self._statistics_handler.new_entry(self._location, time, len(car_list))
 
-        camera_data = CameraData(
-            data=camera_info,
-            image=image,
-            car_list=car_list,
-            traffic_measure=traffic_measure,
-        )
+            camera_data = CameraData(
+                data=camera_info,
+                image=image,
+                car_list=car_list,
+                traffic_measure=traffic_measure,
+            )
 
-        self.statistics = self._statistics_handler.get_data()
-        self.car_rectangles = car_list
-        self.traffic_measure = traffic_measure
+            self.statistics = self._statistics_handler.get_data()
+            self.car_rectangles = car_list
+            self.traffic_measure = traffic_measure
 
-        return camera_data
+            return camera_data
 
     def calculate_traffic_measure(self, nr_cars: int) -> TrafficMeasure:
         """Give a label for how much traffic there is at the moment."""

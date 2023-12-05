@@ -28,6 +28,38 @@ from tests.common import MockConfigEntry
 from tests.test_util.aiohttp import AiohttpClientMocker
 
 
+async def test_coordinator(
+    hass: HomeAssistant,
+    aioclient_mock: AiohttpClientMocker,
+    get_camera: CameraData,
+) -> None:
+    """Test the Trafikverket Camera coordinator."""
+    aioclient_mock.get(
+        "https://www.testurl.com/test_photo.jpg?type=fullsize", content=b"0123456789"
+    )
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        source=SOURCE_USER,
+        data=ENTRY_CONFIG,
+        entry_id="1",
+        unique_id="123",
+        title="Test location",
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "homeassistant.components.trafikverket_camera.coordinator.TrafikverketCamera.async_get_camera",
+        return_value=get_camera,
+    ) as mock_data:
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+        mock_data.assert_called_once()
+        state1 = hass.states.get("camera.test_location")
+        assert state1.state == "idle"
+
+
 @pytest.mark.parametrize(
     ("sideeffect", "p_error", "entry_state"),
     [
