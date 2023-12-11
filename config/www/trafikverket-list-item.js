@@ -10,7 +10,15 @@ export class ListItem extends LitElement {
     name: String,
     quantity: Number,
     selected: Boolean,
+    showOverlay: Boolean,
+    hass: {},
+    entryId: {},
   };
+
+  constructor() {
+    super();
+    this.showOverlay = false;
+  }
 
   static styles = css`
     .camera-list-item {
@@ -20,6 +28,9 @@ export class ListItem extends LitElement {
       border-width: 2px 0px 0px 0px;
       border-color: #444444;
       padding: 5px;
+    }
+    .camera-list-item:hover {
+      background-color: #666666;
     }
     .camera-preview-column {
       width: 50px;
@@ -39,7 +50,7 @@ export class ListItem extends LitElement {
       text-align: center;
     }
     .item-selected {
-      background: #666666;
+      background: #333333 !important;
     }
     .low {
       background: #00ff00;
@@ -52,11 +63,11 @@ export class ListItem extends LitElement {
     }
     .critical {
       background: #000000;
-      font-color: #ffffff;
+      color: #ffffff;
     }
     .unknown {
       background: #444444;
-      font-color: #ffffff;
+      color: #ffffff;
     }
     @media (prefers-color-scheme: dark) {
       .item-selected {
@@ -64,6 +75,21 @@ export class ListItem extends LitElement {
       }
     }
   `;
+
+  handleContextMenu(e) {
+    e.preventDefault();
+    this.showOverlay = true;
+    console.log("Right click");
+  }
+
+  handleRemove() {
+    this.showOverlay = false;
+    this.hass.callWS({
+      type: "trafikverket_camera/remove",
+      entry_id: this.entryId,
+      location: this.name,
+    });
+  }
 
   render() {
     let labelClass = "";
@@ -91,12 +117,23 @@ export class ListItem extends LitElement {
     }
 
     return html`
-      <div class="camera-list-item${extraClass}">
-        <img class="camera-preview-column" src="${this.src}" />
-        <p class="camera-location-column">${this.name}</p>
-        <div class="traffic-density-label ${labelClass.toLowerCase()}">
-          ${labelClass}
-        </div>
+      <div
+        class="camera-list-item${extraClass}"
+        @contextmenu="${this.handleContextMenu}"
+      >
+        ${this.showOverlay
+          ? html`
+              <div class="overlay">
+                <button @click="${this.handleRemove}">Remove</button>
+              </div>
+            `
+          : html`
+              <img class="camera-preview-column" src="${this.src}" />
+              <p class="camera-location-column">${this.name}</p>
+              <div class="traffic-density-label ${labelClass.toLowerCase()}">
+                ${labelClass}
+              </div>
+            `}
       </div>
     `;
   }

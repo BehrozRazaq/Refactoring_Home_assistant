@@ -29,12 +29,14 @@ import "./trafikverket-big-camera-view.js";
 import "./trafikverket-list-item.js";
 import "./trafikverket-navigation-view.js";
 import "./trafikverket-statistics-view.js";
+import "./trafikverket-add-camera.js";
 
 class TrafikverketCameraCard extends LitElement {
   constructor() {
     super();
     this.selectedIndex = 0;
     this.mode = "Image";
+    this.cameras = [];
   }
 
   static get properties() {
@@ -54,9 +56,39 @@ class TrafikverketCameraCard extends LitElement {
     }
   }
 
+  firstUpdated() {
+    if (this.entryId) return;
+    this.hass.callWS({ type: "config_entries/get" }).then((configEntries) => {
+      console.log(configEntries);
+      this.entryId = configEntries.filter(
+        (e) => e.domain == "trafikverket_camera"
+      )[0].entry_id;
+      this.requestUpdate();
+    });
+  }
+
+  setCameras() {
+    const regex = /^camera\.trafikverket_camera.*/;
+    const filteredKeys = Object.keys(this.hass.states).filter((key) =>
+      regex.test(key)
+    );
+
+    this.cameras = filteredKeys.map((key) => this.hass.states[key]);
+  }
+
   render() {
-    const cameraData =
-      this.hass.states[this.config.cameras[this.selectedIndex]];
+    console.log(this.hass.states);
+    this.setCameras();
+    if (this.cameras.length == 0) {
+      return html` <add-camera
+        .entryId=${this.entryId}
+        .hass=${this.hass}
+      ></add-camera>`;
+    }
+    if (this.selectedIndex >= this.cameras.length) {
+      this.selectedIndex = 0;
+    }
+    const cameraData = this.cameras[this.selectedIndex];
     const imgPath = cameraData.attributes.entity_picture;
     const friendlyName = cameraData.attributes.friendly_name;
     const statistics = JSON.stringify(cameraData.attributes.statistics);
@@ -82,15 +114,16 @@ class TrafikverketCameraCard extends LitElement {
               <p style="margin-right: 20px;">Traffic</p>
             </div>
             <div id="camera-list-contents">
-              ${this.config.cameras.map((cameraId, index) => {
-                const data = this.hass.states[cameraId];
+              ${this.cameras.map((data, index) => {
                 const imgPath = data.attributes.entity_picture;
-                const name = data.attributes.friendly_name;
+                const name = data.attributes.name;
                 const selected = true ? index == this.selectedIndex : false;
                 const quantity = data.attributes.traffic_measure;
                 return html`<list-item
                   src="${imgPath}"
                   name="${name}"
+                  .hass="${this.hass}"
+                  .entryId="${this.entryId}"
                   quantity="${quantity}"
                   selected="${selected}"
                   @click="${(_) => {
@@ -99,6 +132,10 @@ class TrafikverketCameraCard extends LitElement {
                   }}"
                 />`;
               })}
+              <add-camera
+                .entryId=${this.entryId}
+                .hass=${this.hass}
+              ></add-camera>
             </div>
           </div>
           <div id="info-view">
@@ -118,9 +155,6 @@ class TrafikverketCameraCard extends LitElement {
   // The user supplied configuration. Throw an exception and Home Assistant
   // will render an error card.
   setConfig(config) {
-    if (!config.cameras) {
-      throw new Error("Need cameras");
-    }
     this.config = config;
   }
 

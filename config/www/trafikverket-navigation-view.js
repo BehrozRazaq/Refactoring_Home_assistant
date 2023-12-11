@@ -19,6 +19,9 @@ export class NavigationView extends LitElement {
       width: 15px;
       height: 15px;
     }
+    .arrow:hover {
+      border-color: #555555;
+    }
     .right {
       transform: rotate(-45deg);
     }
@@ -29,7 +32,7 @@ export class NavigationView extends LitElement {
       margin: 0px 0px 30px 0px;
     }
     .disabled {
-      border-color: #999999;
+      border-color: #999999 !important;
     }
     #navigation-container {
       display: flex;
@@ -41,7 +44,7 @@ export class NavigationView extends LitElement {
         border-width: 0 3px 3px 0;
       }
       .disabled {
-        border-color: #3c3c3c;
+        border-color: #3c3c3c !important;
       }
     }
   `;

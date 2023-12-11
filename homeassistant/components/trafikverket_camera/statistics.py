@@ -7,9 +7,9 @@ class StatisticsHandler:
 
     statistics: list[tuple[str, int]]
 
-    def __init__(self, location: str) -> None:
+    def __init__(self, location: str, config_dir: str) -> None:
         """Location -> which location is used for the trafikverket camera."""
-        self.database_connector = Operations()
+        self.database_connector = Operations(config_dir)
         self.statistics = self.database_connector.query_time_and_cars_by_location(
             location
         )

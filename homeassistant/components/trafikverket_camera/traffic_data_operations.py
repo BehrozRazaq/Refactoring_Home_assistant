@@ -1,29 +1,23 @@
 """Functions to interact with an SQLite database for traffic data."""
+import os
 import sqlite3
 
 
 class Operations:
     """Database interface."""
 
-    def __init__(self) -> None:
+    def __init__(self, config_dir: str) -> None:
         """Create an empty table if traffic_amount is not present."""
-        conn = sqlite3.connect(
-            "./homeassistant/components/trafikverket_camera/home_assistant.db"
-        )
-        cursor = conn.cursor()
-
-        cursor.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='traffic_amount'"
-        )
-        if cursor.fetchone() is None:
+        self.database_path = os.path.join(config_dir, "home-assistant_v2.db")
+        with sqlite3.connect(self.database_path) as conn:
+            cursor = conn.cursor()
             cursor.execute(
-                "CREATE TABLE traffic_amount (location VARCHAR(255), time DATETIME, nr_cars INTEGER NOT NULL)"
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='traffic_amount'"
             )
-
-    def _get_database(self) -> sqlite3.Connection:
-        return sqlite3.connect(
-            "./homeassistant/components/trafikverket_camera/home_assistant.db"
-        )
+            if cursor.fetchone() is None:
+                cursor.execute(
+                    "CREATE TABLE traffic_amount (location VARCHAR(255), time DATETIME, nr_cars INTEGER NOT NULL)"
+                )
 
     def insert_traffic_entry(self, location: str, time: str, nr_cars: int) -> None:
         """Insert a new traffic entry into the database.
@@ -33,14 +27,14 @@ class Operations:
             time: The timestamp of the traffic entry.
             nr_cars: The number of cars at the given location and time.
         """
-        conn = self._get_database()
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO traffic_amount (location, time, nr_cars) VALUES (?,?,?)",
-            (location, time, nr_cars),
-        )
-        conn.commit()
-        conn.close()
+        with sqlite3.connect(self.database_path) as conn:
+            conn.cursor()
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO traffic_amount (location, time, nr_cars) VALUES (?,?,?)",
+                (location, time, nr_cars),
+            )
+            conn.commit()
 
     # Function to query time and number of cars in a location
     def query_time_and_cars_by_location(self, location: str) -> list[tuple[str, int]]:
@@ -52,13 +46,13 @@ class Operations:
         Returns:
             A list of tuples containing the time and number of cars at the specified location.
         """
-        conn = self._get_database()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT time, nr_cars FROM traffic_amount WHERE location = ?", (location,)
-        )
-        entries = cursor.fetchall()
-        conn.close()
+        with sqlite3.connect(self.database_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT time, nr_cars FROM traffic_amount WHERE location = ?",
+                (location,),
+            )
+            entries = cursor.fetchall()
         if not entries:
             return []
         return entries
@@ -77,16 +71,15 @@ class Operations:
         Returns:
         A list of tuples containing the time and number of cars at the specified location and time span.
         """
-        conn = self._get_database()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT time, nr_cars
-            FROM traffic_amount
-            WHERE location = ? AND time >= ? AND time <= ?
-            """,
-            (location, start_time, end_time),
-        )
-        data = cursor.fetchall()
-        conn.close()
+        with sqlite3.connect(self.database_path) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT time, nr_cars
+                FROM traffic_amount
+                WHERE location = ? AND time >= ? AND time <= ?
+                """,
+                (location, start_time, end_time),
+            )
+            data = cursor.fetchall()
         return data

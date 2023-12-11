@@ -89,11 +89,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up Trafikverket Camera sensor platform."""
 
-    coordinator: TVDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
-        TrafikverketCameraSensor(coordinator, entry.entry_id, description)
-        for description in SENSOR_TYPES
-    )
+    for camera in entry.data.get("cameras", []):
+        entry_id = f"{entry.entry_id}/{camera}"
+        coordinator: TVDataUpdateCoordinator = hass.data[DOMAIN][entry_id]
+        async_add_entities(
+            TrafikverketCameraSensor(coordinator, entry_id, description)
+            for description in SENSOR_TYPES
+        )
 
 
 class TrafikverketCameraSensor(TrafikverketCameraNonCameraEntity, SensorEntity):

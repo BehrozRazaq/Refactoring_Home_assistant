@@ -12,6 +12,9 @@ export class BigCameraView extends LitElement {
   };
 
   drawRects() {
+    if (this.shadowRoot.children.length == 0) {
+      return;
+    }
     const imageElement = this.shadowRoot.children[0].children[1].children[0];
     const canvas = this.shadowRoot.getElementById("rect-drawer");
     canvas.width = imageElement.width;
@@ -93,6 +96,7 @@ export class BigCameraView extends LitElement {
   render() {
     if (this.data) {
       this.formattedData = JSON.parse(this.data);
+      this.drawRects();
     }
     const item = html`
       <div id="camera-large">
