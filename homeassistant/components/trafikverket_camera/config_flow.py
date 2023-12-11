@@ -4,13 +4,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from pytrafikverket.exceptions import (
-    InvalidAuthentication,
-    MultipleCamerasFound,
-    NoCameraFound,
-    UnknownError,
-)
-from pytrafikverket.trafikverket_camera import CameraInfo, TrafikverketCamera
+from pytrafikverket.exceptions import InvalidAuthentication, UnknownError
+from pytrafikverket.trafikverket_camera import TrafikverketCamera
 import voluptuous as vol
 
 from homeassistant import config_entries
@@ -19,7 +14,7 @@ from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 
-from .const import CONF_LOCATION, DOMAIN
+from .const import DOMAIN
 
 
 class TVCameraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -29,28 +24,20 @@ class TVCameraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     entry: config_entries.ConfigEntry | None
 
-    async def validate_input(
-        self, sensor_api: str, location: str
-    ) -> tuple[dict[str, str], str | None]:
+    async def validate_input(self, sensor_api: str) -> dict[str, str]:
         """Validate input from user input."""
         errors: dict[str, str] = {}
-        camera_info: CameraInfo | None = None
 
         web_session = async_get_clientsession(self.hass)
         camera_api = TrafikverketCamera(web_session, sensor_api)
         try:
-            camera_info = await camera_api.async_get_camera(location)
-        except NoCameraFound:
-            errors["location"] = "invalid_location"
-        except MultipleCamerasFound:
-            errors["location"] = "more_locations"
+            await camera_api.async_get_camera("Nyängsrondellen nordost")
         except InvalidAuthentication:
             errors["base"] = "invalid_auth"
         except UnknownError:
             errors["base"] = "cannot_connect"
 
-        camera_location = camera_info.location if camera_info else None
-        return (errors, camera_location)
+        return errors
 
     async def async_step_reauth(self, entry_data: Mapping[str, Any]) -> FlowResult:
         """Handle re-authentication with Trafikverket."""
@@ -68,9 +55,7 @@ class TVCameraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             api_key = user_input[CONF_API_KEY]
 
             assert self.entry is not None
-            errors, _ = await self.validate_input(
-                api_key, self.entry.data[CONF_LOCATION]
-            )
+            errors = await self.validate_input(api_key)
 
             if not errors:
                 self.hass.config_entries.async_update_entry(
@@ -101,19 +86,16 @@ class TVCameraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input:
             api_key = user_input[CONF_API_KEY]
-            location = user_input[CONF_LOCATION]
 
-            errors, camera_location = await self.validate_input(api_key, location)
+            errors = await self.validate_input(api_key)
 
             if not errors:
-                assert camera_location
-                await self.async_set_unique_id(f"{DOMAIN}-{camera_location}")
+                await self.async_set_unique_id(DOMAIN)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title=camera_location,
+                    title="Trafikverket Camera",
                     data={
                         CONF_API_KEY: api_key,
-                        CONF_LOCATION: camera_location,
                     },
                 )
 
@@ -122,7 +104,6 @@ class TVCameraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_API_KEY): cv.string,
-                    vol.Required(CONF_LOCATION): cv.string,
                 }
             ),
             errors=errors,

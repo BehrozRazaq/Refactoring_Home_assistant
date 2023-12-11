@@ -22,7 +22,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .car_identifier import CarIdentifier, CarRectangle
-from .const import CONF_LOCATION, DOMAIN, TrafficMeasure
+from .const import DOMAIN, TrafficMeasure
 from .statistics import StatisticsHandler
 from .traffic_data_operations import Operations
 
@@ -55,7 +55,7 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
     car_rectangles: list[CarRectangle] = []
     traffic_measure = TrafficMeasure.Unknown
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, location: str) -> None:
         """Initialize the Trafikverket coordinator."""
         super().__init__(
             hass,
@@ -65,10 +65,12 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
         )
         self.session = async_get_clientsession(hass)
         self._camera_api = TrafikverketCamera(self.session, entry.data[CONF_API_KEY])
-        self._location = entry.data[CONF_LOCATION]
-        self._operations = Operations()
+        self._location = location
+        self._operations = Operations(hass.config.config_dir)
         self._AI = CarIdentifier()
-        self._statistics_handler = StatisticsHandler(self._location)
+        self._statistics_handler = StatisticsHandler(
+            self._location, hass.config.config_dir
+        )
 
     async def _async_update_data(self) -> CameraData:
         """Fetch data from Trafikverket."""

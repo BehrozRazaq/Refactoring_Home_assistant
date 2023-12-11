@@ -21,17 +21,11 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up a Trafikverket Camera."""
+    for camera in entry.data.get("cameras", []):
+        entry_id = f"{entry.entry_id}/{camera}"
+        coordinator: TVDataUpdateCoordinator = hass.data[DOMAIN][entry_id]
 
-    coordinator: TVDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]
-
-    async_add_entities(
-        [
-            TVCamera(
-                coordinator,
-                entry.entry_id,
-            )
-        ],
-    )
+        async_add_entities([TVCamera(coordinator, entry_id)])
 
 
 class TVCamera(TrafikverketCameraEntity, Camera):
@@ -68,6 +62,7 @@ class TVCamera(TrafikverketCameraEntity, Camera):
     def extra_state_attributes(self) -> Mapping[str, Any] | None:
         """Return additional attributes."""
         return {
+            "name": self.coordinator.data.data.camera_name,
             ATTR_DESCRIPTION: self.coordinator.data.data.description,
             ATTR_LOCATION: self.coordinator.data.data.location,
             ATTR_TYPE: self.coordinator.data.data.camera_type,
