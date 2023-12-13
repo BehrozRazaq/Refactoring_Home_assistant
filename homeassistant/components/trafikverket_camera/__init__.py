@@ -50,7 +50,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload Trafikverket Camera config entry."""
 
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
+        for camera in entry.data.get("cameras", []):
+            hass.data[DOMAIN].pop(f"{entry.entry_id}/{camera}")
 
     return unload_ok
 

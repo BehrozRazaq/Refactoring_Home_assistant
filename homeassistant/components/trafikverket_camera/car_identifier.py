@@ -35,7 +35,8 @@ class CarIdentifier:
 
     def get_cars(self, image: BytesIO | None) -> list[CarRectangle]:
         """With given image data, spits out where the cars are placed in the image."""
-        assert image
+        if not image:
+            return []
         image_arr = np.array(Image.open(image))
 
         image_arr = cv2.cvtColor(image_arr, cv2.COLOR_BGR2GRAY)
