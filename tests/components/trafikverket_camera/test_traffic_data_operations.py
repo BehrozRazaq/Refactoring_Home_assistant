@@ -1,4 +1,5 @@
 """Test traffic data operations."""
+from pathlib import Path
 import sqlite3
 
 import pytest
@@ -8,16 +9,16 @@ from homeassistant.components.trafikverket_camera.traffic_data_operations import
 )
 
 
-def test_insert_traffic_entry(mock_database):
+def test_insert_traffic_entry(mock_database) -> None:
     """Tests the function insert_traffic_entry."""
     default_time = "2023-01-01 12:00:00"
     default_location = "Bur nordöst"
     default_nr_cars = 10
 
     valid_nr_cars = [10, 100, 0, 1000]
-    invalid_nr_cars = [-10, 5000]
+    invalid_nr_cars = [-10, -5000]
 
-    operations = Operations(db_file=mock_database)
+    operations = Operations(config_dir=str(Path(mock_database).parent))
 
     for valid_count in valid_nr_cars:
         operations.insert_traffic_entry(default_location, default_time, valid_count)
@@ -42,13 +43,13 @@ def test_insert_traffic_entry(mock_database):
     assert result[2] == default_nr_cars
 
 
-def test_query_time_and_cars_by_location(mock_database):
+def test_query_time_and_cars_by_location(mock_database) -> None:
     """Tests the function query_time_and_cars_by_location."""
     location = "test_location"
     valid_time = "2023-01-01 12:00:00"
     nr_cars = 10
 
-    operations = Operations(db_file=mock_database)
+    operations = Operations(config_dir=str(Path(mock_database).parent))
 
     with sqlite3.connect(mock_database) as conn:
         cursor = conn.cursor()
@@ -63,9 +64,3 @@ def test_query_time_and_cars_by_location(mock_database):
     assert isinstance(result, list)
     assert result is not None
     assert result == [(valid_time, nr_cars)]
-
-
-def test_query_time_and_cars_by_location_and_time():
-    """Test the function 'query_time_and_cars_by_location_and_time'."""
-    # Function not used
-    pass

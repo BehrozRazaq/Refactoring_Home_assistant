@@ -74,7 +74,7 @@ def fixture_get_camera() -> CameraInfo:
 @pytest.fixture(name="mock_database")
 def setup_temporary_database(tmp_path):
     """Set up the temp database for testing."""
-    temp_db_file = str(tmp_path / "test_db.db")
+    temp_db_file = str(tmp_path / "home-assistant_v2.db")
 
     with sqlite3.connect(temp_db_file) as conn:
         cursor = conn.cursor()

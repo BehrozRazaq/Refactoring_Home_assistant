@@ -186,7 +186,7 @@ async def test_traffic_measure(hass: HomeAssistant, mock_database: str) -> None:
         unique_id="123",
         title="Test location",
     )
-    coordinator = TVDataUpdateCoordinator(hass, entry)
+    coordinator = TVDataUpdateCoordinator(hass, entry, location)
     coordinator._statistics_handler = MockStatisticsHandler()
 
     coordinator._statistics_handler.statistics = [

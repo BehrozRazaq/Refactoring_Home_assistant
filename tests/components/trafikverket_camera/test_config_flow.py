@@ -4,16 +4,11 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
-from pytrafikverket.exceptions import (
-    InvalidAuthentication,
-    MultipleCamerasFound,
-    NoCameraFound,
-    UnknownError,
-)
+from pytrafikverket.exceptions import InvalidAuthentication, UnknownError
 from pytrafikverket.trafikverket_camera import CameraInfo
 
 from homeassistant import config_entries
-from homeassistant.components.trafikverket_camera.const import CONF_LOCATION, DOMAIN
+from homeassistant.components.trafikverket_camera.const import DOMAIN
 from homeassistant.const import CONF_API_KEY
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
@@ -41,19 +36,17 @@ async def test_form(hass: HomeAssistant, get_camera: CameraInfo) -> None:
             result["flow_id"],
             {
                 CONF_API_KEY: "1234567890",
-                CONF_LOCATION: "Test loc",
             },
         )
         await hass.async_block_till_done()
 
     assert result2["type"] == FlowResultType.CREATE_ENTRY
-    assert result2["title"] == "Test location"
+    assert result2["title"] == "Trafikverket Camera"
     assert result2["data"] == {
         "api_key": "1234567890",
-        "location": "Test location",
     }
     assert len(mock_setup_entry.mock_calls) == 1
-    assert result2["result"].unique_id == "trafikverket_camera-Test location"
+    assert result2["result"].unique_id == "trafikverket_camera"
 
 
 @pytest.mark.parametrize(
@@ -63,16 +56,6 @@ async def test_form(hass: HomeAssistant, get_camera: CameraInfo) -> None:
             InvalidAuthentication,
             "base",
             "invalid_auth",
-        ),
-        (
-            NoCameraFound,
-            "location",
-            "invalid_location",
-        ),
-        (
-            MultipleCamerasFound,
-            "location",
-            "more_locations",
         ),
         (
             UnknownError,
@@ -100,7 +83,6 @@ async def test_flow_fails(
             result4["flow_id"],
             user_input={
                 CONF_API_KEY: "1234567890",
-                CONF_LOCATION: "incorrect",
             },
         )
 
@@ -113,7 +95,6 @@ async def test_reauth_flow(hass: HomeAssistant) -> None:
         domain=DOMAIN,
         data={
             CONF_API_KEY: "1234567890",
-            CONF_LOCATION: "Test location",
         },
         unique_id="1234",
     )
@@ -148,7 +129,6 @@ async def test_reauth_flow(hass: HomeAssistant) -> None:
     assert result2["reason"] == "reauth_successful"
     assert entry.data == {
         "api_key": "1234567891",
-        "location": "Test location",
     }
 
 
@@ -159,16 +139,6 @@ async def test_reauth_flow(hass: HomeAssistant) -> None:
             InvalidAuthentication,
             "base",
             "invalid_auth",
-        ),
-        (
-            NoCameraFound,
-            "location",
-            "invalid_location",
-        ),
-        (
-            MultipleCamerasFound,
-            "location",
-            "more_locations",
         ),
         (
             UnknownError,
@@ -185,7 +155,6 @@ async def test_reauth_flow_error(
         domain=DOMAIN,
         data={
             CONF_API_KEY: "1234567890",
-            CONF_LOCATION: "Test location",
         },
         unique_id="1234",
     )
@@ -232,5 +201,4 @@ async def test_reauth_flow_error(
     assert result2["reason"] == "reauth_successful"
     assert entry.data == {
         "api_key": "1234567891",
-        "location": "Test location",
     }

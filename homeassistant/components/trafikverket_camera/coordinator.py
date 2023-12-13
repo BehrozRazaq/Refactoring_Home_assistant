@@ -65,7 +65,6 @@ class TVDataUpdateCoordinator(DataUpdateCoordinator[CameraData]):
         self.session = async_get_clientsession(hass)
         self._camera_api = TrafikverketCamera(self.session, entry.data[CONF_API_KEY])
         self._location = location
-        self._operations = Operations(hass.config.config_dir)
         self._AI = CarIdentifier()
         self._statistics_handler = StatisticsHandler(
             self._location, hass.config.config_dir

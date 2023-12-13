@@ -1,7 +1,7 @@
 """Functions to interact with an SQLite database for traffic data."""
+import logging
 import os
 import sqlite3
-from typing import Optional
 
 
 class Operations:
@@ -10,6 +10,7 @@ class Operations:
     def __init__(self, config_dir: str) -> None:
         """Create an empty table if traffic_amount is not present."""
         self.database_path = os.path.join(config_dir, "home-assistant_v2.db")
+        self._logger = logging.getLogger(__name__)
         try:
             with sqlite3.connect(self.database_path) as conn:
                 cursor = conn.cursor()
@@ -20,10 +21,10 @@ class Operations:
                     cursor.execute(
                         "CREATE TABLE traffic_amount (location VARCHAR(255), time DATETIME, nr_cars INTEGER NOT NULL)"
                     )
-                    cursor.commit()
+                    conn.commit()
         except sqlite3.Error as e:
-            print(f"SQLite error: {e}")
-            
+            err_msg = f"SQLite error: {e}"
+            self._logger.error(err_msg)
 
     def insert_traffic_entry(self, location: str, time: str, nr_cars: int) -> None:
         """Insert a new traffic entry into the database.
@@ -33,6 +34,8 @@ class Operations:
             time: The timestamp of the traffic entry.
             nr_cars: The number of cars at the given location and time.
         """
+        if nr_cars < 0:
+            raise ValueError("Cannot have negative amount of cars")
         try:
             with sqlite3.connect(self.database_path) as conn:
                 conn.cursor()
@@ -43,7 +46,8 @@ class Operations:
                 )
                 conn.commit()
         except sqlite3.Error as e:
-            print(f"SQLite error: {e}")
+            err_msg = f"SQLite error: {e}"
+            self._logger.error(err_msg)
 
     def query_time_and_cars_by_location(self, location: str) -> list[tuple[str, int]]:
         """Query the time and number of cars for a specific location.
@@ -66,7 +70,9 @@ class Operations:
                 return []
             return entries
         except sqlite3.Error as e:
-            print(f"SQLite error: {e}")
+            err_msg = f"SQLite error: {e}"
+            self._logger.error(err_msg)
+        return []
 
     def query_time_and_cars_by_location_and_time(
         self, location: str, start_time: str, end_time: str
@@ -94,5 +100,6 @@ class Operations:
                 )
                 data = cursor.fetchall()
         except sqlite3.Error as e:
-            print(f"SQLite error: {e}")
+            err_msg = f"SQLite error: {e}"
+            self._logger.error(err_msg)
         return data
