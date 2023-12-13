@@ -45,7 +45,7 @@ class CarIdentifier:
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2, 2))
         image_arr = cv2.morphologyEx(image_arr, cv2.MORPH_CLOSE, kernel)
 
-        car_cascade_src = "./homeassistant/components/trafikverket_camera/cars.xml"
+        car_cascade_src = "./homeassistant/components/trafikverket_camera/toast_3.xml"
         car_cascade = cv2.CascadeClassifier(car_cascade_src)
         cars = car_cascade.detectMultiScale(image_arr, 1.1, 1)
 
