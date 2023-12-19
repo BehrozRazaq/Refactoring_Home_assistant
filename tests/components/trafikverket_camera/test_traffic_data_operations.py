@@ -64,3 +64,36 @@ def test_query_time_and_cars_by_location(mock_database) -> None:
     assert isinstance(result, list)
     assert result is not None
     assert result == [(valid_time, nr_cars)]
+
+
+def test_query_time_and_cars_by_location_and_time(mock_database) -> None:
+    """Tests the function query_time_and_cars_by_location_and_time."""
+    location = "test_location"
+    times = [
+        "2023-01-01 12:00:00",
+        "2023-02-01 12:00:00",
+        "2023-03-01 12:00:00",
+        "2023-04-01 12:00:00",
+    ]
+    start_time = times[0]
+    end_time = times[2]
+    nr_cars = 10
+
+    operations = Operations(config_dir=str(Path(mock_database).parent))
+
+    with sqlite3.connect(mock_database) as conn:
+        cursor = conn.cursor()
+        for time in times:
+            cursor.execute(
+                "INSERT INTO traffic_amount (location, time, nr_cars) VALUES (?, ?, ?)",
+                (location, time, nr_cars),
+            )
+        conn.commit()
+
+        result = operations.query_time_and_cars_by_location_and_time(
+            location, start_time, end_time
+        )
+
+        assert isinstance(result, list)
+        assert result is not None
+        assert result == [(times[0], nr_cars), (times[1], nr_cars), (times[2], nr_cars)]
